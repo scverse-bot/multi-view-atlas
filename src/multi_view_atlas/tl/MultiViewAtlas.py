@@ -28,6 +28,11 @@ class MultiViewAtlas:
 
             MuData: MuData object with original AnnData in `mudata['full']` and one modality for each dataset view.
             View AnnDatas only store obs and obsm.
+
+        Details:
+        --------
+            All the views in `view_assign` have to be in `'view_hierarchy`, but not viceversa
+            to allow building the hierarchy progressively.
         """
         if isinstance(data, AnnData):
             adata = data
@@ -46,7 +51,7 @@ class MultiViewAtlas:
 
             mdata = MuData(vdata_dict)
             mdata.uns["view_hierarchy"] = adata.uns["view_hierarchy"]
-            mdata.obsm["view_assign"] = adata.uns["view_assign"]
+            mdata.obsm["view_assign"] = adata.obsm["view_assign"]
 
         elif isinstance(data, MuData):
             mdata = data
@@ -69,8 +74,11 @@ class MultiViewAtlas:
                     mdata["full"].obsm["view_assign"] = view_assign
                     _clean_view_assignment(mdata["full"])
                     mdata.obsm["view_assign"] = view_assign
+        else:
+            raise ValueError("data must be an AnnData or MuData object")
 
         self.mdata = mdata
+        self.views = get_views_from_structure(self.mdata.uns["view_hierarchy"])
 
     def __getitem__(self, index) -> Union["MuData", AnnData]:
         if isinstance(index, str):

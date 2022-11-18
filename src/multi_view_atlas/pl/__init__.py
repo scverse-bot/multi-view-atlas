@@ -1,1 +1,1 @@
-from .basic import plot_multiview_embedding
+from .basic import multiview_embedding
