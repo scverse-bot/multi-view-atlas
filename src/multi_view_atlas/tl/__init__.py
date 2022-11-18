@@ -1,1 +1,1 @@
-from .basic import basic_tool
+from .MultiViewAtlas import MultiViewAtlas

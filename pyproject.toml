@@ -4,7 +4,7 @@ requires = ["hatchling"]
 
 
 [project]
-name = "multi-view-atlas"
+name = "multi_view_atlas"
 version = "0.0.1"
 description = "Multi-view objects for annotation and mapping to single-cell atlases"
 readme = "README.md"
@@ -21,6 +21,8 @@ urls.Source = "https://github.com/emdann/multi-view-atlas"
 urls.Home-page = "https://github.com/emdann/multi-view-atlas"
 dependencies = [
     "anndata",
+    "mudata",
+    "scanpy",
     # for debug logging (referenced from the issue template)
     "session-info"
 ]
