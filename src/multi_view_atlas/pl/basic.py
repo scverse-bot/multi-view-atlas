@@ -61,15 +61,16 @@ def multiview_embedding(
                 **kwargs,
             )
         else:
-            adata_pl = mdata[v].copy()
-            adata_pl.obs["view_color"] = np.nan
-            adata_pl.obs.loc[mdata[view].obs_names, "view_color"] = adata_pl.obs.loc[mdata[view].obs_names, color]
+            mdata.mod[v].obs["view_color"] = np.nan
+            mdata.mod[v].obs.loc[mdata.mod[v].obs_names, "view_color"] = mdata.mod[v].obs.loc[
+                mdata[view].obs_names, color
+            ]
             if legend_loc != "on data":
                 legend_loc_pl = "none"
             else:
                 legend_loc_pl = legend_loc
             sc.pl.embedding(
-                adata_pl,
+                mdata[v],
                 basis=basis,
                 title=f"{v} view",
                 color="view_color",

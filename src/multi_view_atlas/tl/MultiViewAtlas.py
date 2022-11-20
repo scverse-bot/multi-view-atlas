@@ -1,5 +1,6 @@
-from typing import Union
+from typing import List, Union
 
+import numpy as np
 import pandas as pd
 import yaml
 from anndata import AnnData
@@ -11,10 +12,7 @@ from ..utils import get_parent_view, get_views_from_structure
 class MultiViewAtlas:
     """Multi-view atlas methods"""
 
-    def __init__(
-        self,
-        data: Union[AnnData, MuData] = None,
-    ):
+    def __init__(self, data: Union[AnnData, MuData] = None, transition_rule: Union[str, List[str]] = "X_pca"):
         """Initialize a MultiViewAltas object, encoding assignment to atlas views and hierarchy between views
 
         Params:
@@ -24,7 +22,9 @@ class MultiViewAtlas:
                 if AnnData, must contain the following fields:
                 - obsm["view_assign"]: binary DataFrame with assignment of each cells to views
                 - uns["view_hierarchy"]: dictionary of hierarchy between views
-
+            transition_rule: str or list
+                which rule to use for transition between one view and another: either a slot in adata.obsm storing latent dimensions (i.e. transition by clustering)
+                or a column in adata.obs or list of columns (i.e. transition by metadata)
 
             MuData: MuData object with original AnnData in `mudata['full']` and one modality for each dataset view.
             View AnnDatas only store obs and obsm.
@@ -47,7 +47,7 @@ class MultiViewAtlas:
             vdata_dict["full"] = adata.copy()
             for v in adata.obsm["view_assign"].columns:
                 vdata = adata[adata.obsm["view_assign"][v] == 1]
-                vdata_dict[v] = AnnData(obs=vdata.obs, obsm=vdata.obsm)
+                vdata_dict[v] = AnnData(obs=vdata.obs, obsm=vdata.obsm, obsp=vdata.obsp)
 
             mdata = MuData(vdata_dict)
             mdata.uns["view_hierarchy"] = adata.uns["view_hierarchy"]
@@ -74,11 +74,29 @@ class MultiViewAtlas:
                     mdata["full"].obsm["view_assign"] = view_assign
                     _clean_view_assignment(mdata["full"])
                     mdata.obsm["view_assign"] = view_assign
+
+            # Remove var and X from views
+            for k in mdata.mod.keys():
+                if k != "full":
+                    mdata.mod[k] = AnnData(obs=mdata[k].obs, obsm=mdata[k].obsm)
         else:
             raise ValueError("data must be an AnnData or MuData object")
 
+        # Make matrix of transition rules
+        _check_transition_rule(mdata["full"], transition_rule)
+        view_hierarchy = mdata.uns["view_hierarchy"].copy()
+        all_views = get_views_from_structure(view_hierarchy)
+        view_transition_rule = pd.DataFrame(np.nan, index=all_views, columns=all_views)
+        # Set all transitions to rule
+        view_str = pd.json_normalize(view_hierarchy).columns.tolist()
+        for s in view_str:
+            v_str = np.array(s.split("."))
+            for v in v_str:
+                view_transition_rule.loc[v, v_str] = transition_rule
+
         self.mdata = mdata
         self.views = get_views_from_structure(self.mdata.uns["view_hierarchy"])
+        self.view_transition_rule = view_transition_rule
 
     def __getitem__(self, index) -> Union["MuData", AnnData]:
         if isinstance(index, str):
@@ -109,6 +127,34 @@ class MultiViewAtlas:
         l3 = self.mdata.__repr__()
         return l1 + l2 + "\n" + l3
 
+    def set_transition_rule(self, parent_view, child_view, transition_rule):
+        """Set new transition rule between two views.
+
+        Parameters
+        ----------
+        parent_view: str
+            name of parent view
+        child_view: str
+            name of child view
+        transition_rule: str or list
+            which rule to use for transition between one view and another: either a slot in adata.obsm storing latent dimensions (i.e. transition by clustering)
+            or a column in adata.obs or list of columns (i.e. transition by metadata)
+
+        Returns
+        -------
+        None, modifies MultiViewAtlas object in place
+
+        """
+        if not get_parent_view(child_view, self.mdata.uns["view_hierarchy"]) == parent_view:
+            raise AssertionError(f"View {child_view} is not a child of {parent_view}")
+
+        _check_transition_rule(self.mdata[parent_view], transition_rule)
+        self.view_transition_rule.loc[
+            [parent_view, child_view], [parent_view, child_view]
+        ] = self.view_transition_rule.loc[[parent_view, child_view], [parent_view, child_view]].apply(
+            lambda _: transition_rule, axis=1
+        )
+
 
 def _clean_view_assignment(adata) -> None:
     """Check that the view assignment is correct"""
@@ -131,3 +177,19 @@ def _clean_view_assignment(adata) -> None:
 
     # Reorder from parents to children
     adata.obsm["view_assign"] = assign_tab[get_views_from_structure(view_hierarchy)].copy()
+
+
+def _check_transition_rule(adata, transition_rule):
+    """Check that transition rule is of acceptable type"""
+    if isinstance(transition_rule, str):
+        if transition_rule in adata.obsm.keys():
+            pass
+        elif transition_rule in adata.obs:
+            pass
+        else:
+            raise ValueError(f"transition_rule {transition_rule} not found in .obsm or .obs")
+    elif isinstance(transition_rule, List):
+        if not all([tr in adata.obs for tr in transition_rule]):
+            raise ValueError(f"{transition_rule} are not found in .obs")
+    else:
+        raise ValueError("transition_rule must be a string or a list of strings")
