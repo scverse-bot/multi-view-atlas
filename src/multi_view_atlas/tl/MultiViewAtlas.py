@@ -10,7 +10,7 @@ from ..utils import get_parent_view, get_views_from_structure
 
 
 class MultiViewAtlas:
-    """Multi-view atlas methods"""
+    """Multi-view atlas class"""
 
     def __init__(self, data: Union[AnnData, MuData] = None, transition_rule: Union[str, List[str]] = "X_pca"):
         """Initialize a MultiViewAltas object, encoding assignment to atlas views and hierarchy between views
@@ -41,6 +41,11 @@ class MultiViewAtlas:
             if "view_hierarchy" not in adata.uns.keys():
                 raise ValueError("adata must contain dictionary of view hierarchy in uns['view_hierarchy']")
 
+            if "full" not in adata.uns["view_hierarchy"].keys():
+                adata.uns["view_hierarchy"] = {"full": adata.uns["view_hierarchy"]}
+            if "full" not in adata.obsm["view_assign"]:
+                adata.obsm["view_assign"]["full"] = 1
+
             _clean_view_assignment(adata)
 
             vdata_dict = {}
@@ -50,6 +55,8 @@ class MultiViewAtlas:
                 vdata_dict[v] = AnnData(obs=vdata.obs, obsm=vdata.obsm, obsp=vdata.obsp)
 
             mdata = MuData(vdata_dict)
+            mdata.obs = mdata["full"].obs.copy()
+
             mdata.uns["view_hierarchy"] = adata.uns["view_hierarchy"]
             mdata.obsm["view_assign"] = adata.obsm["view_assign"]
 
@@ -59,6 +66,9 @@ class MultiViewAtlas:
             if "view_hierarchy" not in mdata.uns:
                 try:
                     mdata.uns["view_hierarchy"] = mdata["full"].uns["view_hierarchy"]
+                    if "full" not in mdata.uns["view_hierarchy"].keys():
+                        mdata.uns["view_hierarchy"] = {"full": mdata.uns["view_hierarchy"]}
+
                 except KeyError:
                     raise ValueError("mdata must contain dictionary of view hierarchy in uns['view_hierarchy']")
 
@@ -93,9 +103,11 @@ class MultiViewAtlas:
             v_str = np.array(s.split("."))
             for v in v_str:
                 view_transition_rule.loc[v, v_str] = transition_rule
+        np.fill_diagonal(view_transition_rule.values, np.nan)
 
         self.mdata = mdata
         self.views = get_views_from_structure(self.mdata.uns["view_hierarchy"])
+        self.view_hierarchy = self.mdata.uns["view_hierarchy"]
         self.view_transition_rule = view_transition_rule
 
     def __getitem__(self, index) -> Union["MuData", AnnData]:
@@ -154,6 +166,57 @@ class MultiViewAtlas:
         ] = self.view_transition_rule.loc[[parent_view, child_view], [parent_view, child_view]].apply(
             lambda _: transition_rule, axis=1
         )
+        np.fill_diagonal(self.view_transition_rule.values, np.nan)
+
+    def update_views(self, parent_view, child_assign_tab=None, transition_rule=None):
+        """Add new views in the MultiViewAtlas object.
+
+        Parameters
+        ----------
+        parent_view: str
+            name of parent view to subset from
+        child_assign_tab: pd.DataFrame
+            table of view assignments for each cell in the parent view
+        transition_rule: str or list
+            which rule to use for transition between one view and another: either a slot in adata.obsm storing latent dimensions (i.e. transition by clustering)
+            or a column in adata.obs or list of columns (i.e. transition by metadata)
+
+        Returns
+        -------
+        None, modifies MultiViewAtlas object in place adding new views
+
+        """
+        child_views = child_assign_tab.columns.tolist()
+
+        # Update view assignment
+        self.mdata.obsm["view_assign"][child_views] = child_assign_tab.astype(int)
+        self.mdata.obsm["view_assign"].fillna(0, inplace=True)
+        self.mdata.obsm["view_assign"] = self.mdata.obsm["view_assign"].astype(int)
+
+        # Update view_hierarchy
+        v_keys = [x for x in pd.json_normalize(self.view_hierarchy).columns.tolist() if x.endswith(parent_view)][
+            0
+        ].split(".")
+        self.view_hierarchy = _dict_set_nested(self.view_hierarchy, v_keys, {v: None for v in child_views})
+
+        _clean_view_assignment(self.mdata)
+
+        # Add AnnData objects for new views
+        for v in child_views:
+            vdata = self.mdata["full"][self.mdata.obsm["view_assign"][v] == 1]
+            self.mdata.mod[v] = AnnData(obs=vdata.obs, obsm=vdata.obsm, obsp=vdata.obsp)
+
+        # Update transition_rule
+        _check_transition_rule(self.mdata, transition_rule)
+        self.view_transition_rule[[parent_view] + child_views] = np.nan
+        view_transition_rule = pd.DataFrame(np.nan, index=child_views, columns=[parent_view] + child_views)
+        self.view_transition_rule = pd.concat([self.view_transition_rule, view_transition_rule], axis=0)
+        for v in child_views:
+            self.view_transition_rule.loc[[parent_view, v], [parent_view, v]] = self.view_transition_rule.loc[
+                [parent_view, v], [parent_view, v]
+            ].apply(lambda _: transition_rule, axis=1)
+        np.fill_diagonal(self.view_transition_rule.values, np.nan)
+        self.views = get_views_from_structure(self.mdata.uns["view_hierarchy"])
 
 
 def _clean_view_assignment(adata) -> None:
@@ -193,3 +256,22 @@ def _check_transition_rule(adata, transition_rule):
             raise ValueError(f"{transition_rule} are not found in .obs")
     else:
         raise ValueError("transition_rule must be a string or a list of strings")
+
+
+def _dict_set_nested(d, keys, value):
+    node = d
+    key_count = len(keys)
+    key_idx = 0
+
+    for key in keys:
+        key_idx += 1
+
+        if key_idx == key_count:
+            node[key] = value
+            return d
+        else:
+            if key not in node:
+                node[key] = {}
+                node = node[key]
+            else:
+                node = node[key]
