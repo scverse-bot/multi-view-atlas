@@ -37,6 +37,13 @@ def multiview_embedding(
         \**kwargs:
             additional arguments to pass to `sc.pl.embedding`
     """
+    # Check if mdata is MultiViewAtlas
+    if isinstance(mdata, MultiViewAtlas):
+        mdata = mdata.mdata
+
+    if view not in mdata.mod.keys():
+        raise ValueError(f"View {view} not in mdata")
+
     # Get and order views to plot
     pl_views = []
     curr_view = view

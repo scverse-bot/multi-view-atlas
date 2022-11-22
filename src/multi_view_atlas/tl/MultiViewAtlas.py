@@ -66,11 +66,11 @@ class MultiViewAtlas:
             if "view_hierarchy" not in mdata.uns:
                 try:
                     mdata.uns["view_hierarchy"] = mdata["full"].uns["view_hierarchy"]
-                    if "full" not in mdata.uns["view_hierarchy"].keys():
-                        mdata.uns["view_hierarchy"] = {"full": mdata.uns["view_hierarchy"]}
-
                 except KeyError:
                     raise ValueError("mdata must contain dictionary of view hierarchy in uns['view_hierarchy']")
+
+            if "full" not in mdata.uns["view_hierarchy"].keys():
+                mdata.uns["view_hierarchy"] = {"full": mdata.uns["view_hierarchy"]}
 
             if "view_assign" not in mdata.obsm:
                 try:
@@ -78,8 +78,7 @@ class MultiViewAtlas:
                 except KeyError:
                     view_assign = pd.DataFrame(index=mdata["full"].obs_names)
                     for k, v in mdata.mod.items():
-                        if k != "full":
-                            view_assign[k] = view_assign.index.isin(v.obs_names)
+                        view_assign[k] = view_assign.index.isin(v.obs_names)
                     view_assign = view_assign.astype("int")
                     mdata["full"].obsm["view_assign"] = view_assign
                     _clean_view_assignment(mdata["full"])
