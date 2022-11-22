@@ -10,6 +10,13 @@ from multi_view_atlas.utils import (
 )
 
 
+def test_X():
+    adata = sample_dataset()
+    mva = MultiViewAtlas(adata)
+    assert mva.mdata["full"].X is not None, "X is None"
+    assert mva.mdata["full"].X.shape == adata.X.shape, "X shape is not correct"
+
+
 def test_broken_assignment():
     adata = sample_dataset()
     # Broken assignment of cells to views

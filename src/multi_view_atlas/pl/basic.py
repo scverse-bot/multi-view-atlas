@@ -42,9 +42,8 @@ def multiview_embedding(
     curr_view = view
     while curr_view is not None:
         pl_views.append(curr_view)
-        curr_view = get_parent_view(curr_view, mdata["full"].uns["view_hierarchy"])
+        curr_view = get_parent_view(curr_view, mdata.uns["view_hierarchy"])
 
-    pl_views.append("full")
     pl_views = pl_views[::-1]
 
     fig, ax = plt.subplots(1, len(pl_views), figsize=(fig_height * len(pl_views), fig_height))

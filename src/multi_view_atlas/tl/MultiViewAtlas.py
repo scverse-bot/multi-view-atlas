@@ -6,7 +6,7 @@ import yaml
 from anndata import AnnData
 from mudata import MuData
 
-from ..utils import get_parent_view, get_views_from_structure
+from ..utils import check_transition_rule, get_parent_view, get_views_from_structure
 
 
 class MultiViewAtlas:
@@ -50,7 +50,7 @@ class MultiViewAtlas:
 
             vdata_dict = {}
             vdata_dict["full"] = adata.copy()
-            for v in adata.obsm["view_assign"].columns:
+            for v in adata.obsm["view_assign"].columns[1:]:
                 vdata = adata[adata.obsm["view_assign"][v] == 1]
                 vdata_dict[v] = AnnData(obs=vdata.obs, obsm=vdata.obsm, obsp=vdata.obsp)
 
@@ -93,7 +93,7 @@ class MultiViewAtlas:
             raise ValueError("data must be an AnnData or MuData object")
 
         # Make matrix of transition rules
-        _check_transition_rule(mdata["full"], transition_rule)
+        check_transition_rule(mdata["full"], transition_rule)
         view_hierarchy = mdata.uns["view_hierarchy"].copy()
         all_views = get_views_from_structure(view_hierarchy)
         view_transition_rule = pd.DataFrame(np.nan, index=all_views, columns=all_views)
@@ -160,7 +160,7 @@ class MultiViewAtlas:
         if not get_parent_view(child_view, self.mdata.uns["view_hierarchy"]) == parent_view:
             raise AssertionError(f"View {child_view} is not a child of {parent_view}")
 
-        _check_transition_rule(self.mdata[parent_view], transition_rule)
+        check_transition_rule(self.mdata[parent_view], transition_rule)
         self.view_transition_rule.loc[
             [parent_view, child_view], [parent_view, child_view]
         ] = self.view_transition_rule.loc[[parent_view, child_view], [parent_view, child_view]].apply(
@@ -207,7 +207,7 @@ class MultiViewAtlas:
             self.mdata.mod[v] = AnnData(obs=vdata.obs, obsm=vdata.obsm, obsp=vdata.obsp)
 
         # Update transition_rule
-        _check_transition_rule(self.mdata, transition_rule)
+        check_transition_rule(self.mdata, transition_rule)
         self.view_transition_rule[[parent_view] + child_views] = np.nan
         view_transition_rule = pd.DataFrame(np.nan, index=child_views, columns=[parent_view] + child_views)
         self.view_transition_rule = pd.concat([self.view_transition_rule, view_transition_rule], axis=0)
@@ -240,22 +240,6 @@ def _clean_view_assignment(adata) -> None:
 
     # Reorder from parents to children
     adata.obsm["view_assign"] = assign_tab[get_views_from_structure(view_hierarchy)].copy()
-
-
-def _check_transition_rule(adata, transition_rule):
-    """Check that transition rule is of acceptable type"""
-    if isinstance(transition_rule, str):
-        if transition_rule in adata.obsm.keys():
-            pass
-        elif transition_rule in adata.obs:
-            pass
-        else:
-            raise ValueError(f"transition_rule {transition_rule} not found in .obsm or .obs")
-    elif isinstance(transition_rule, List):
-        if not all([tr in adata.obs for tr in transition_rule]):
-            raise ValueError(f"{transition_rule} are not found in .obs")
-    else:
-        raise ValueError("transition_rule must be a string or a list of strings")
 
 
 def _dict_set_nested(d, keys, value):

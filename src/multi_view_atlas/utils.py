@@ -1,4 +1,4 @@
-from typing import Dict, Union
+from typing import Dict, List, Union
 
 import numpy as np
 import pandas as pd
@@ -57,3 +57,19 @@ def sample_dataset():
     adata.obsm["view_assign"] = assign_tab.copy()
     adata.uns["view_hierarchy"] = view_hierarchy.copy()
     return adata
+
+
+def check_transition_rule(adata, transition_rule):
+    """Check that transition rule is of acceptable type"""
+    if isinstance(transition_rule, str):
+        if transition_rule in adata.obsm.keys():
+            pass
+        elif transition_rule in adata.obs:
+            pass
+        else:
+            raise ValueError(f"transition_rule {transition_rule} not found in .obsm or .obs")
+    elif isinstance(transition_rule, List):
+        if not all([tr in adata.obs for tr in transition_rule]):
+            raise ValueError(f"{transition_rule} are not found in .obs")
+    else:
+        raise ValueError("transition_rule must be a string or a list of strings")
