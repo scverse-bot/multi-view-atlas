@@ -13,7 +13,7 @@ def multiview_embedding(
     mdata: Union[MultiViewAtlas, MuData],
     view: str,
     basis: str = "X_umap",
-    basis_from_view: str = None,
+    basis_from_full: bool = False,
     color: str = "louvain",
     legend_loc: str = "on data",
     fig_height: float = 6,
@@ -29,8 +29,8 @@ def multiview_embedding(
             view to plot
         basis:
             embedding to plot (slot in `mdata[view].obsm`)
-        basis_from_view:
-            view to use for embedding (default: None, use view-specific embeddings)
+        basis_from_full:
+            boolean indicating whether to use full view embedding (default: False, use view-specific embeddings)
         color:
             color to plot (slot in `mdata[view].obs`)
         legend_loc:
@@ -58,13 +58,15 @@ def multiview_embedding(
 
     fig, ax = plt.subplots(1, len(pl_views), figsize=(fig_height * len(pl_views), fig_height))
     for i, v in enumerate(pl_views):
-        if basis_from_view is not None:
-            if f"{basis}_{basis_from_view}" in mdata[v].obsm.keys():
-                basis = f"{basis}_{basis_from_view}"
-            elif basis in mdata[v].obsm.keys():
+        if basis_from_full:
+            if f"{basis}_full" in mdata["full"].obsm.keys():
+                basis = f"{basis}_full"
+            elif basis in mdata["full"].obsm.keys():
                 basis = basis
             else:
-                raise ValueError(f"Embedding {basis} not in mdata[{v}].obsm")
+                raise ValueError(f"Embedding {basis} not in mdata['full'].obsm")
+            mdata.mod[v].obsm[basis] = mdata.mod["full"][mdata.mod[v].obs_names].obsm[basis]
+
         if v == view:
             sc.pl.embedding(
                 mdata[v],
