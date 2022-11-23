@@ -58,7 +58,7 @@ def multiview_embedding(
         if v == view:
             sc.pl.embedding(
                 mdata[v],
-                basis=basis,
+                basis=f"{basis}_{v}",
                 title=f"{v} view",
                 color=color,
                 legend_loc=legend_loc,
@@ -77,7 +77,7 @@ def multiview_embedding(
                 legend_loc_pl = legend_loc
             sc.pl.embedding(
                 mdata[v],
-                basis=basis,
+                basis=f"{basis}_{v}",
                 title=f"{v} view",
                 color="view_color",
                 legend_loc=legend_loc_pl,

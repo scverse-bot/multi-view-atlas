@@ -1,3 +1,4 @@
+import mudata
 import numpy as np
 import pandas as pd
 import pytest
@@ -15,6 +16,26 @@ def test_X():
     mva = MultiViewAtlas(adata)
     assert mva.mdata["full"].X is not None, "X is None"
     assert mva.mdata["full"].X.shape == adata.X.shape, "X shape is not correct"
+
+
+def test_init_from_adata():
+    adata = sample_dataset()
+    mva = MultiViewAtlas(adata, subset_obsm=False)
+    assert "X_pca" not in mva.mdata["T cells"].obsm
+    mva = MultiViewAtlas(adata, subset_obsm=True)
+    assert "X_pca" in mva.mdata["T cells"].obsm
+
+
+def test_init_from_mudata():
+    adata = sample_dataset()
+    view_assign = adata.obsm["view_assign"].copy()
+    adata_dict = {}
+    adata_dict["full"] = adata.copy()
+    for v in view_assign:
+        adata_dict[v] = adata[view_assign[v] == 1].copy()
+    mdata = mudata.MuData(adata_dict)
+    mvatlas = MultiViewAtlas(mdata, transition_rule="louvain")
+    assert [k.endswith("lymphoid") for k in mvatlas.mdata["lymphoid"].obsm.keys()]
 
 
 def test_broken_assignment():

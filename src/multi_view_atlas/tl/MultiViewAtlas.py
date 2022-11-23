@@ -12,7 +12,12 @@ from ..utils import check_transition_rule, get_parent_view, get_views_from_struc
 class MultiViewAtlas:
     """Multi-view atlas class"""
 
-    def __init__(self, data: Union[AnnData, MuData] = None, transition_rule: Union[str, List[str]] = "X_pca"):
+    def __init__(
+        self,
+        data: Union[AnnData, MuData] = None,
+        transition_rule: Union[str, List[str]] = "X_pca",
+        subset_obsm: bool = False,
+    ):
         """Initialize a MultiViewAltas object, encoding assignment to atlas views and hierarchy between views
 
         Params:
@@ -25,6 +30,9 @@ class MultiViewAtlas:
             transition_rule: str or list
                 which rule to use for transition between one view and another: either a slot in adata.obsm storing latent dimensions (i.e. transition by clustering)
                 or a column in adata.obs or list of columns (i.e. transition by metadata)
+            subset_obsm: bool
+                (used only if data is an AnnData object) whether to store a subset of the full data obsm
+                in every view (default: False, obsm slots are considered to be specific to the full view)
 
             MuData: MuData object with original AnnData in `mudata['full']` and one modality for each dataset view.
             View AnnDatas only store obs and obsm.
@@ -52,7 +60,10 @@ class MultiViewAtlas:
             vdata_dict["full"] = adata.copy()
             for v in adata.obsm["view_assign"].columns[1:]:
                 vdata = adata[adata.obsm["view_assign"][v] == 1]
-                vdata_dict[v] = AnnData(obs=vdata.obs, obsm=vdata.obsm, obsp=vdata.obsp)
+                if subset_obsm:
+                    vdata_dict[v] = AnnData(obs=vdata.obs, obsm=vdata.obsm, obsp=vdata.obsp)
+                else:
+                    vdata_dict[v] = AnnData(obs=vdata.obs)
 
             mdata = MuData(vdata_dict)
             mdata.obs = mdata["full"].obs.copy()
@@ -88,6 +99,15 @@ class MultiViewAtlas:
             for k in mdata.mod.keys():
                 if k != "full":
                     mdata.mod[k] = AnnData(obs=mdata[k].obs, obsm=mdata[k].obsm)
+
+            # Rename obsm slots to be view specific
+            for v in mdata.mod.keys():
+                obsm_dict = mdata.mod[v].obsm.copy()
+                # for k, dr in obsm_dict.items():
+                #     obsm_dict[f'{k}_{v}'] = dr.copy()
+                obsm_dict = {f"{k}_{v}": dr for k, dr in obsm_dict.items()}
+                mdata.mod[v].obsm = obsm_dict.copy()
+
         else:
             raise ValueError("data must be an AnnData or MuData object")
 
