@@ -177,8 +177,18 @@ def map_next_view(
                 X_similarity_atlas = curr_view_adata.obs[[transition_rule]].values
                 X_similarity_query = adata_query.obs[[transition_rule]].values
             else:
-                X_similarity_atlas = pd.get_dummies(curr_view_adata.obs[transition_rule]).values
-                X_similarity_query = pd.get_dummies(adata_query.obs[transition_rule]).values
+                X_similarity_atlas = pd.get_dummies(curr_view_adata.obs[transition_rule])
+                X_similarity_query = pd.get_dummies(adata_query.obs[transition_rule])
+
+                # Check for missing levels
+                missing_cols = [x for x in X_similarity_atlas.columns if x not in X_similarity_query.columns]
+                if len(missing_cols) > 0:
+                    X_similarity_query[missing_cols] = 0
+                    X_similarity_query = X_similarity_query[X_similarity_atlas.columns].copy()
+
+                X_similarity_atlas = X_similarity_atlas.values
+                X_similarity_query = X_similarity_query.values
+
         if transition_rule in adata_query.obsm:
             X_similarity_atlas = curr_view_adata.obsm[transition_rule]
             X_similarity_query = adata_query.obsm[transition_rule]
