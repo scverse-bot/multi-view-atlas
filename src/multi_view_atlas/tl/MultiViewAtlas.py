@@ -17,6 +17,7 @@ class MultiViewAtlas:
         data: Union[AnnData, MuData] = None,
         transition_rule: Union[str, List[str]] = "X_pca",
         subset_obsm: bool = False,
+        rename_obsm: bool = True,
     ):
         """Initialize a MultiViewAltas object, encoding assignment to atlas views and hierarchy between views
 
@@ -33,6 +34,8 @@ class MultiViewAtlas:
             subset_obsm: bool
                 (used only if data is an AnnData object) whether to store a subset of the full data obsm
                 in every view (default: False, obsm slots are considered to be specific to the full view)
+            rename_obsm: bool
+                (used only if data is an MuData object) whether to rename obsm slots to avoid name clashes
 
             MuData: MuData object with original AnnData in `mudata['full']` and one modality for each dataset view.
             View AnnDatas only store obs and obsm.
@@ -54,16 +57,17 @@ class MultiViewAtlas:
             if "full" not in adata.obsm["view_assign"]:
                 adata.obsm["view_assign"]["full"] = 1
 
-            _clean_view_assignment(adata)
-
             vdata_dict = {}
             vdata_dict["full"] = adata.copy()
-            for v in adata.obsm["view_assign"].columns[1:]:
-                vdata = adata[adata.obsm["view_assign"][v] == 1]
-                if subset_obsm:
-                    vdata_dict[v] = AnnData(obs=vdata.obs, obsm=vdata.obsm, obsp=vdata.obsp)
-                else:
-                    vdata_dict[v] = AnnData(obs=vdata.obs)
+            for v in adata.obsm["view_assign"].columns:
+                if v != "full":
+                    vdata = adata[adata.obsm["view_assign"][v] == 1]
+                    if subset_obsm:
+                        vdata_dict[v] = AnnData(obs=vdata.obs, obsm=vdata.obsm, obsp=vdata.obsp)
+                    else:
+                        vdata_dict[v] = AnnData(obs=vdata.obs)
+
+            _clean_view_assignment(adata)
 
             mdata = MuData(vdata_dict)
             mdata.obs = mdata["full"].obs.copy()
@@ -101,12 +105,11 @@ class MultiViewAtlas:
                     mdata.mod[k] = AnnData(obs=mdata[k].obs, obsm=mdata[k].obsm)
 
             # Rename obsm slots to be view specific
-            for v in mdata.mod.keys():
-                obsm_dict = mdata.mod[v].obsm.copy()
-                # for k, dr in obsm_dict.items():
-                #     obsm_dict[f'{k}_{v}'] = dr.copy()
-                obsm_dict = {f"{k}_{v}": dr for k, dr in obsm_dict.items()}
-                mdata.mod[v].obsm = obsm_dict.copy()
+            if rename_obsm:
+                for v in mdata.mod.keys():
+                    obsm_dict = mdata.mod[v].obsm.copy()
+                    obsm_dict = {f"{k}_{v}": dr for k, dr in obsm_dict.items()}
+                    mdata.mod[v].obsm = obsm_dict.copy()
 
         else:
             raise ValueError("data must be an AnnData or MuData object")
@@ -236,6 +239,24 @@ class MultiViewAtlas:
             ].apply(lambda _: transition_rule, axis=1)
         np.fill_diagonal(self.view_transition_rule.values, np.nan)
         self.views = get_views_from_structure(self.mdata.uns["view_hierarchy"])
+
+    def get_view_pairs(self) -> pd.DataFrame:
+        """Get data frame of parent-child view pairs and transition rules."""
+        view_pairs = []
+        view_str = pd.json_normalize(self.view_hierarchy).columns.str.split(".")
+        for s in view_str:
+            depth = 0
+            while depth < (len(s) - 1):
+                # view_pair = s[depth: depth + 2]
+                view_pairs.append((depth, s[depth], s[depth + 1]))
+                depth += 1
+        view_pairs = pd.DataFrame(view_pairs, columns=["depth", "parent_view", "child_view"])
+        view_pairs["transition_rule"] = [
+            self.view_transition_rule.loc[x[1]["parent_view"], x[1]["child_view"]] for x in view_pairs.iterrows()
+        ]
+        view_pairs = view_pairs.sort_values("depth")
+        view_pairs = view_pairs.drop_duplicates()
+        return view_pairs
 
 
 def _clean_view_assignment(adata) -> None:

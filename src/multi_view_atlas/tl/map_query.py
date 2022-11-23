@@ -34,17 +34,7 @@ def add_query(
         MultiViewAtlas object with mapped query cells
     """
     # Define all current view - next view pairs for assignment
-    view_pairs = []
-    view_str = pd.json_normalize(mvatlas.view_hierarchy).columns.str.split(".")
-    for s in view_str:
-        depth = 0
-        while depth < (len(s) - 1):
-            # view_pair = s[depth: depth + 2]
-            view_pairs.append((depth, s[depth], s[depth + 1]))
-            depth += 1
-    view_pairs = pd.DataFrame(view_pairs, columns=["depth", "current_view", "next_view"])
-    view_pairs = view_pairs.sort_values("depth")
-    view_pairs = view_pairs.drop_duplicates()
+    view_pairs = mvatlas.get_view_pairs()
 
     # Check if query cells already in mdata
     if adata_query.obs_names.isin(mvatlas.mdata.obs_names).all():
@@ -62,8 +52,8 @@ def add_query(
     vdata_dict = {}
     for _, row in view_pairs.iterrows():
         depth = row["depth"]
-        current_view = row["current_view"]
-        next_view = row["next_view"]
+        current_view = row["parent_view"]
+        next_view = row["child_view"]
         if any(adata_query.obs_names.isin(mvatlas.mdata[next_view].obs_names)):
             logging.info(f"Query cells already in {next_view}")
             v_assign = mvatlas.mdata.obsm["view_assign"][[next_view]]
@@ -89,7 +79,7 @@ def add_query(
     mdata.mod["full"] = mdata.mod["full"][mdata.obs_names].copy()
     view_transition_rule = mvatlas.view_transition_rule.copy()
     trans_rule = pd.Series(mvatlas.view_transition_rule.values.ravel()).dropna().unique()[0]
-    mvatlas_mapped = MultiViewAtlas(mdata, transition_rule=trans_rule)
+    mvatlas_mapped = MultiViewAtlas(mdata, rename_obsm=False, transition_rule=trans_rule)
     mvatlas_mapped.view_transition_rule = view_transition_rule.copy()
     return mvatlas_mapped
 

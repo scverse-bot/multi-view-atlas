@@ -30,7 +30,7 @@ def test_consecutive_mapping():
     query_cells = np.random.choice(adata.obs_names, size=int(np.round(adata.n_obs * 0.1)), replace=False)
     adata_query = adata[query_cells].copy()
     adata = adata[~adata.obs_names.isin(query_cells)].copy()
-    mva = MultiViewAtlas(adata)
+    mva = MultiViewAtlas(adata, subset_obsm=True, transition_rule="X_pca")
 
     # New embedding for NKT view
     v = "NKT cells"
