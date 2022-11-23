@@ -108,7 +108,7 @@ def concatenate_query(
     adata_atlas = mvatlas.mdata[view].copy()
     assert np.intersect1d(adata_atlas.obs_names, adata_query.obs_names).size == 0
     adata_atlas = adata_atlas.concatenate(
-        adata_query, batch_key=batch_key, batch_categories=batch_categories, index_unique=None
+        adata_query, batch_key=batch_key, batch_categories=batch_categories, index_unique=None, uns_merge="unique"
     )
     return adata_atlas
 
