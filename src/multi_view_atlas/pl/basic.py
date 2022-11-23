@@ -13,6 +13,7 @@ def multiview_embedding(
     mdata: Union[MultiViewAtlas, MuData],
     view: str,
     basis: str = "X_umap",
+    basis_from_view: str = None,
     color: str = "louvain",
     legend_loc: str = "on data",
     fig_height: float = 6,
@@ -28,6 +29,8 @@ def multiview_embedding(
             view to plot
         basis:
             embedding to plot (slot in `mdata[view].obsm`)
+        basis_from_view:
+            view to use for embedding (default: None, use view-specific embeddings)
         color:
             color to plot (slot in `mdata[view].obs`)
         legend_loc:
@@ -55,10 +58,17 @@ def multiview_embedding(
 
     fig, ax = plt.subplots(1, len(pl_views), figsize=(fig_height * len(pl_views), fig_height))
     for i, v in enumerate(pl_views):
+        if basis_from_view is not None:
+            if f"{basis}_{basis_from_view}" in mdata[v].obsm.keys():
+                basis = f"{basis}_{basis_from_view}"
+            elif basis in mdata[v].obsm.keys():
+                basis = basis
+            else:
+                raise ValueError(f"Embedding {basis} not in mdata[{v}].obsm")
         if v == view:
             sc.pl.embedding(
                 mdata[v],
-                basis=f"{basis}_{v}",
+                basis=basis,
                 title=f"{v} view",
                 color=color,
                 legend_loc=legend_loc,
@@ -77,7 +87,7 @@ def multiview_embedding(
                 legend_loc_pl = legend_loc
             sc.pl.embedding(
                 mdata[v],
-                basis=f"{basis}_{v}",
+                basis=basis,
                 title=f"{v} view",
                 color="view_color",
                 legend_loc=legend_loc_pl,
