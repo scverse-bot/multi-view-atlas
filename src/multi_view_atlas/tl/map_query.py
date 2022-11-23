@@ -155,7 +155,7 @@ def map_next_view(
         ]
         curr_view_adata = curr_view_adata[curr_view_adata.obs[batch_key] == batch_categories[0]].copy()
         # next_view_adata = next_view_adata[next_view_adata.obs[batch_key] == batch_categories[0]].copy()
-        assert "dataset_group" not in next_view_adata.obs.columns
+        # assert "dataset_group" not in next_view_adata.obs.columns
     else:
         v_assign = mvatlas.mdata.obsm["view_assign"][[next_view]]
     transition_rule = mvatlas.view_transition_rule[current_view][next_view]
