@@ -7,7 +7,6 @@ import pandas as pd
 from anndata import AnnData
 from mudata import MuData
 from pandas.api.types import is_numeric_dtype
-from rich.logging import RichHandler
 from sklearn.neighbors import KNeighborsClassifier
 
 from ..utils import check_transition_rule, get_views_from_structure
@@ -17,12 +16,11 @@ warnings.simplefilter(action="ignore", category=FutureWarning)
 warnings.simplefilter(action="ignore", category=UserWarning)
 
 logger = logging.getLogger(__name__)
-logger.propagate = False
-ch = RichHandler(level=logging.INFO, show_path=False, show_time=False)
-formatter = logging.Formatter("%(message)s")
-ch.setFormatter(formatter)
-logger.addHandler(ch)
-logger.removeHandler(logger.handlers[0])
+# logger.propagate = False
+# ch = RichHandler(level=logging.INFO, show_path=False, show_time=False)
+# formatter = logging.Formatter("%(message)s")
+# ch.setFormatter(formatter)
+# logger.addHandler(ch)
 
 
 def load_query(
