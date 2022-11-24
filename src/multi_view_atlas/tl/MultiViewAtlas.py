@@ -15,7 +15,7 @@ class MultiViewAtlas:
     def __init__(
         self,
         data: Union[AnnData, MuData] = None,
-        transition_rule: Union[str, List[str]] = "X_pca",
+        transition_rule: Union[str, List[str], pd.DataFrame] = None,
         subset_obsm: bool = False,
         rename_obsm: bool = True,
     ):
@@ -115,17 +115,25 @@ class MultiViewAtlas:
             raise ValueError("data must be an AnnData or MuData object")
 
         # Make matrix of transition rules
-        check_transition_rule(mdata["full"], transition_rule)
-        view_hierarchy = mdata.uns["view_hierarchy"].copy()
-        all_views = get_views_from_structure(view_hierarchy)
-        view_transition_rule = pd.DataFrame(np.nan, index=all_views, columns=all_views)
-        # Set all transitions to rule
-        view_str = pd.json_normalize(view_hierarchy).columns.tolist()
-        for s in view_str:
-            v_str = np.array(s.split("."))
-            for v in v_str:
-                view_transition_rule.loc[v, v_str] = transition_rule
-        np.fill_diagonal(view_transition_rule.values, np.nan)
+        if transition_rule is not None:
+            if isinstance(transition_rule, str) or isinstance(transition_rule, list):
+                check_transition_rule(mdata["full"], transition_rule)
+                view_hierarchy = mdata.uns["view_hierarchy"].copy()
+                all_views = get_views_from_structure(view_hierarchy)
+                view_transition_rule = pd.DataFrame(np.nan, index=all_views, columns=all_views)
+                # Set all transitions to rule
+                view_str = pd.json_normalize(view_hierarchy).columns.tolist()
+                for s in view_str:
+                    v_str = np.array(s.split("."))
+                    for v in v_str:
+                        view_transition_rule.loc[v, v_str] = transition_rule
+                np.fill_diagonal(view_transition_rule.values, np.nan)
+            elif isinstance(transition_rule, pd.DataFrame):
+                view_transition_rule = transition_rule.copy()
+        else:
+            view_hierarchy = mdata.uns["view_hierarchy"].copy()
+            all_views = get_views_from_structure(view_hierarchy)
+            view_transition_rule = pd.DataFrame(np.nan, index=all_views, columns=all_views)
 
         self.mdata = mdata
         self.views = get_views_from_structure(self.mdata.uns["view_hierarchy"])
@@ -160,6 +168,9 @@ class MultiViewAtlas:
         l2 = "\t" + "\n\t".join(hierarchy_str.split("\n"))
         l3 = self.mdata.__repr__()
         return l1 + l2 + "\n" + l3
+
+    # def copy(self) -> "MultiViewAtlas":
+    #     return MultiViewAtlas(self.mdata.copy())
 
     def set_transition_rule(self, parent_view, child_view, transition_rule):
         """Set new transition rule between two views.

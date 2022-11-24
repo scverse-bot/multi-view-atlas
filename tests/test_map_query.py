@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 
 from multi_view_atlas.tl import MultiViewAtlas
 from multi_view_atlas.tl.map_query import add_query
@@ -21,6 +22,20 @@ def test_mapping_output():
     assert (
         mva_mapped.mdata["T cells"].obs["louvain"].isin(["CD4 T cells", "CD8 T cells"]).all()
     ), "wrong assignment of query cells"
+
+
+def test_missing_rules_from_full():
+    """Test that no mapping is run if all the rules from full are missing"""
+    adata = sample_dataset()
+    # split in query and atlas
+    query_cells = np.random.choice(adata.obs_names, size=int(np.round(adata.n_obs * 0.1)), replace=False)
+    adata_query = adata[query_cells].copy()
+    adata = adata[~adata.obs_names.isin(query_cells)].copy()
+    mva = MultiViewAtlas(adata, transition_rule="X_pca", rename_obsm=True)
+    adata_query.obs.drop("louvain", axis=1, inplace=True)
+    del adata_query.obsm["X_pca"]
+    with pytest.raises(ValueError):
+        add_query(mva, adata_query)
 
 
 def test_consecutive_mapping():

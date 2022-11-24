@@ -41,12 +41,19 @@ def add_query(
         vdata_full = mvatlas.mdata["full"].copy()
     else:
         vdata_full = concatenate_query(mvatlas, adata_query, "full")
-
-    # Check if query cells already in mdata
-    if adata_query.obs_names.isin(mvatlas.mdata.obs_names).all():
-        vdata_full = mvatlas.mdata["full"].copy()
-    else:
-        vdata_full = concatenate_query(mvatlas, adata_query, "full")
+        # Check that at least one mapping from full view is possible with transition rules
+        rules_from_full = view_pairs[view_pairs.depth == 0]["transition_rule"].unique()
+        missing_rules = []
+        for r in rules_from_full:
+            try:
+                if check_transition_rule(adata_query, r) is None:
+                    continue
+            except ValueError:
+                missing_rules.append(r)
+        if len(rules_from_full) == len(missing_rules):
+            raise ValueError(
+                f" No mapping possible from full view. Please add info on rules {missing_rules} to query dataset"
+            )
 
     new_view_assign = pd.DataFrame()
     vdata_dict = {}
@@ -78,9 +85,9 @@ def add_query(
     mdata = MuData({v: vdata_dict[v] for v in get_views_from_structure(mvatlas.view_hierarchy)})
     mdata.mod["full"] = mdata.mod["full"][mdata.obs_names].copy()
     view_transition_rule = mvatlas.view_transition_rule.copy()
-    trans_rule = pd.Series(mvatlas.view_transition_rule.values.ravel()).dropna().unique()[0]
-    mvatlas_mapped = MultiViewAtlas(mdata, rename_obsm=False, transition_rule=trans_rule)
-    mvatlas_mapped.view_transition_rule = view_transition_rule.copy()
+    # trans_rule = pd.Series(mvatlas.view_transition_rule.values.ravel()).dropna().unique()[0]
+    mvatlas_mapped = MultiViewAtlas(mdata, rename_obsm=False, transition_rule=view_transition_rule)
+    # mvatlas_mapped.view_transition_rule = view_transition_rule.copy()
     return mvatlas_mapped
 
 
