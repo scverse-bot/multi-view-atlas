@@ -169,8 +169,11 @@ class MultiViewAtlas:
         l3 = self.mdata.__repr__()
         return l1 + l2 + "\n" + l3
 
-    # def copy(self) -> "MultiViewAtlas":
-    #     return MultiViewAtlas(self.mdata.copy())
+    def copy(self) -> "MultiViewAtlas":
+        """Copy MultiViewAtlas object"""
+        mvatlas = MultiViewAtlas(self.mdata.copy(), rename_obsm=False)
+        mvatlas.view_transition_rule = self.view_transition_rule.copy()
+        return mvatlas
 
     def set_transition_rule(self, parent_view, child_view, transition_rule):
         """Set new transition rule between two views.
