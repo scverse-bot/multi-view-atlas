@@ -66,7 +66,8 @@ def multiview_embedding(
             else:
                 raise ValueError(f"Embedding {basis} not in mdata['full'].obsm")
             mdata.mod[v].obsm[basis] = mdata.mod["full"][mdata.mod[v].obs_names].obsm[basis]
-
+        else:
+            basis = f"{basis}_{v}"
         if v == view:
             sc.pl.embedding(
                 mdata[v],
