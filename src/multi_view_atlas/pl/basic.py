@@ -58,20 +58,23 @@ def multiview_embedding(
 
     fig, ax = plt.subplots(1, len(pl_views), figsize=(fig_height * len(pl_views), fig_height))
     for i, v in enumerate(pl_views):
+        # Define embedding basis
         if basis_from_full:
             if f"{basis}_full" in mdata["full"].obsm.keys():
-                basis = f"{basis}_full"
+                pl_basis = f"{basis}_full"
             elif basis in mdata["full"].obsm.keys():
-                basis = basis
+                pl_basis = basis
             else:
                 raise ValueError(f"Embedding {basis} not in mdata['full'].obsm")
-            mdata.mod[v].obsm[basis] = mdata.mod["full"][mdata.mod[v].obs_names].obsm[basis]
+            mdata.mod[v].obsm[pl_basis] = mdata.mod["full"][mdata.mod[v].obs_names].obsm[basis]
         else:
-            basis = f"{basis}_{v}"
+            pl_basis = f"{basis}_{v}"
+
+        # Plot
         if v == view:
             sc.pl.embedding(
                 mdata[v],
-                basis=basis,
+                basis=pl_basis,
                 title=f"{v} view",
                 color=color,
                 legend_loc=legend_loc,
@@ -90,7 +93,7 @@ def multiview_embedding(
                 legend_loc_pl = legend_loc
             sc.pl.embedding(
                 mdata[v],
-                basis=basis,
+                basis=pl_basis,
                 title=f"{v} view",
                 color="view_color",
                 legend_loc=legend_loc_pl,
