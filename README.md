@@ -9,12 +9,10 @@
 
 Multi-view objects for single-cell atlases, for annotation and mapping of query datasets.
 
-<!--
 ## Getting started
 
-Please refer to the [documentation][link-docs]. In particular, the
-
--   [API documentation][link-api]. -->
+-   [Building MultiViewAtlas from existing views (fetal immune dataset)](https://github.com/Teichlab/multi-view-atlas/blob/master/multiviewatlas_demo.ipynb)
+-   [MultiViewAtlas building and mapping with scvi-tools](https://github.com/Teichlab/multi-view-atlas/blob/master/multiviewatlas_demo_pbmcs.ipynb)
 
 ## Installation
 
