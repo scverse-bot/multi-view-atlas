@@ -7,20 +7,21 @@
 [link-tests]: https://github.com/emdann/multi-view-atlas/actions/workflows/test.yml
 [badge-docs]: https://img.shields.io/readthedocs/multi-view-atlas
 
-Multi-view objects for annotation and mapping to single-cell atlases
+Multi-view objects for single-cell atlases, for annotation and mapping of query datasets.
 
+<!--
 ## Getting started
 
 Please refer to the [documentation][link-docs]. In particular, the
 
--   [API documentation][link-api].
+-   [API documentation][link-api]. -->
 
 ## Installation
 
 You need to have Python 3.8 or newer installed on your system. If you don't have
 Python installed, we recommend installing [Mambaforge](https://github.com/conda-forge/miniforge#mambaforge).
 
-There are several alternative options to install multi-view-atlas:
+<!-- There are several alternative options to install multi-view-atlas: -->
 
 <!--
 1) Install the latest release of `multi-view-atlas` from `PyPI <https://pypi.org/project/multi-view-atlas/>`_:
@@ -30,24 +31,25 @@ pip install multi-view-atlas
 ```
 -->
 
-1. Install the latest development version:
+Install the latest development version:
 
 ```bash
 pip install git+https://github.com/emdann/multi-view-atlas.git@main
 ```
 
-## Release notes
+<!-- ## Release notes
 
-See the [changelog][changelog].
+See the [changelog][changelog]. -->
 
 ## Contact
 
-For questions and help requests, you can reach out in the [scverse discourse][scverse-discourse].
+<!-- For questions and help requests, you can reach out in the [scverse discourse][scverse-discourse]. -->
+
 If you found a bug, please use the [issue tracker][issue-tracker].
 
-## Citation
+<!-- ## Citation
 
-> t.b.a
+> t.b.a -->
 
 [scverse-discourse]: https://discourse.scverse.org/
 [issue-tracker]: https://github.com/emdann/multi-view-atlas/issues

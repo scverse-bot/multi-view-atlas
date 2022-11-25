@@ -56,6 +56,10 @@ def multiview_embedding(
 
     pl_views = pl_views[::-1]
 
+    # # Make uniform color palette
+    # if f'{color}_colors' in mdata['full'].uns:
+    #     color_palette = mdata['full'].uns[f'{color}_colors']
+
     fig, ax = plt.subplots(1, len(pl_views), figsize=(fig_height * len(pl_views), fig_height))
     for i, v in enumerate(pl_views):
         # Define embedding basis

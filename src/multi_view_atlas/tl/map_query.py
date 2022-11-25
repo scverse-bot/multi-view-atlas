@@ -15,7 +15,7 @@ from .MultiViewAtlas import MultiViewAtlas
 warnings.simplefilter(action="ignore", category=FutureWarning)
 warnings.simplefilter(action="ignore", category=UserWarning)
 
-logger = logging.getLogger(__name__)
+# logger = logging.getLogger(__name__)
 # logger.propagate = False
 # ch = RichHandler(level=logging.INFO, show_path=False, show_time=False)
 # formatter = logging.Formatter("%(message)s")
@@ -104,13 +104,13 @@ def split_query(
         next_view = row["child_view"]
         if "dataset_group" in vdata_dict[current_view].obs:
             adata_query = vdata_dict[current_view][vdata_dict[current_view].obs["dataset_group"] == "query"].copy()
-            logger.info(f"Assigning to {next_view} from {current_view} with rule {row['transition_rule']}")
+            logging.info(f"Assigning to {next_view} from {current_view} with rule {row['transition_rule']}")
             # print(adata_query)
             # print(vdata_dict[current_view])
             # print(mvatlas_mapped.mdata[current_view])
             if "dataset_group" in mvatlas_mapped.mdata[next_view].obs:
                 if sum(mvatlas_mapped.mdata[next_view].obs["dataset_group"] == "query") > 0:
-                    logger.info(f"Query cells already in {next_view}")
+                    logging.info(f"Query cells already in {next_view}")
                     v_assign = mvatlas_mapped.mdata.obsm["view_assign"][[next_view]]
                     vdata_dict[next_view] = mvatlas_mapped.mdata[next_view].copy()
             else:
@@ -124,7 +124,7 @@ def split_query(
                 )
                 vdata_dict[next_view] = next_view_adata.copy()
         else:
-            logger.info(f"No query cells in {current_view}")
+            logging.info(f"No query cells in {current_view}")
             v_assign = mvatlas_mapped.mdata.obsm["view_assign"][[next_view]]
             vdata_dict[next_view] = mvatlas_mapped.mdata[next_view].copy()
         new_view_assign = pd.concat([new_view_assign, v_assign], 1)
@@ -211,7 +211,7 @@ def map_next_view(
         try:
             check_transition_rule(adata_query, transition_rule)
         except ValueError:
-            logger.warning(
+            logging.warning(
                 f"Could not check transition rule {transition_rule} for query data - skipping mapping from {current_view} to {next_view}"
             )
             v_assign_query = pd.DataFrame(0, columns=[next_view], index=adata_query.obs_names)
