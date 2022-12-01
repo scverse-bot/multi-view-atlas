@@ -4,6 +4,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import scanpy as sc
 from mudata import MuData
+from pandas.api.types import is_categorical_dtype
+from scanpy.plotting._tools.scatterplots import _get_palette
 
 from multi_view_atlas.tl import MultiViewAtlas
 from multi_view_atlas.utils import get_parent_view
@@ -57,8 +59,9 @@ def multiview_embedding(
     pl_views = pl_views[::-1]
 
     # # Make uniform color palette
-    # if f'{color}_colors' in mdata['full'].uns:
-    #     color_palette = mdata['full'].uns[f'{color}_colors']
+    if is_categorical_dtype(mdata.mod[view].obs[color]):
+        if "{color}_colors" not in mdata[view].uns.keys():
+            mdata.mod[view].uns["{color}_colors"] = _get_palette(mdata[view], color).values()
 
     fig, ax = plt.subplots(1, len(pl_views), figsize=(fig_height * len(pl_views), fig_height))
     for i, v in enumerate(pl_views):
@@ -91,6 +94,13 @@ def multiview_embedding(
             mdata.mod[v].obs.loc[mdata.mod[v].obs_names, "view_color"] = mdata.mod[v].obs.loc[
                 mdata[view].obs_names, color
             ]
+            if is_categorical_dtype(mdata.mod[view].obs[color]):
+                mdata.mod[v].obs["view_color"] = mdata.mod[v].obs["view_color"].astype("str").astype("category")
+                mdata.mod[v].obs["view_color"] = np.where(
+                    mdata.mod[v].obs["view_color"] == "nan", np.nan, mdata.mod[v].obs["view_color"]
+                )
+                mdata.mod[v].obs["view_color"] = mdata.mod[v].obs["view_color"].astype("category")
+                mdata.mod[v].uns["view_color_colors"] = mdata.mod[view].uns["{color}_colors"]
             if legend_loc != "on data":
                 legend_loc_pl = "none"
             else:
