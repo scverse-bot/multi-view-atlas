@@ -32,7 +32,7 @@ pip install multi-view-atlas
 Install the latest development version:
 
 ```bash
-pip install git+https://github.com/emdann/multi-view-atlas.git@main
+pip install git+https://github.com/emdann/multi-view-atlas.git@master
 ```
 
 <!-- ## Release notes
