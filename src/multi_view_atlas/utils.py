@@ -23,13 +23,13 @@ def get_parent_view(v, view_hierarchy: Dict) -> Union[str, None]:
     """Get parent view of view v"""
     view_str = pd.json_normalize(view_hierarchy).columns.tolist()
     for s in view_str:
-        if v in s:
-            view_hierarchy = np.array(s.split("."))
-            parent_ix = [i - 1 for i, v1 in enumerate(view_hierarchy) if v == v1][0]
+        if v in np.array(s.split(".")):
+            view_hierarchy_ls = np.array(s.split("."))
+            parent_ix = [i - 1 for i, v1 in enumerate(view_hierarchy_ls) if v == v1][0]
     if parent_ix == -1:
         parent_view = None
     else:
-        parent_view = view_hierarchy[parent_ix]
+        parent_view = view_hierarchy_ls[parent_ix]
     return parent_view
 
 
