@@ -30,7 +30,6 @@ def query_reference():
 # Test that mapping works with different types of models
 
 
-@pytest.mark.skip(reason="Takes a long time")
 def test_scvi_output(query_reference, model_dir):
     mva, _ = query_reference
     scvi_mapping.train_scvi_multiview(mva, batch_key="batch", save_path=model_dir, max_epochs=1)
@@ -42,6 +41,7 @@ def test_scvi_output(query_reference, model_dir):
 # @pytest.mark.skip(reason="Takes a long time")
 
 
+@pytest.mark.skip(reason="Takes a long time and scANVI is broken")
 def test_scanvi_mapping(query_reference, model_dir):
     mva, adata_query = query_reference
     scvi_mapping.train_scvi_multiview(
