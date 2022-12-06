@@ -36,6 +36,7 @@ def get_parent_view(v, view_hierarchy: Dict) -> Union[str, None]:
 def sample_dataset():
     """Example dataset for testing"""
     adata = sc.datasets.pbmc3k_processed()
+    adata = adata.raw.to_adata()
     # adata2 = sc.datasets.blobs(n_observations=10000, n_centers=12, n_variables=500)
     # Make DataFrame assigning cells to views
     assign_dict = {
