@@ -18,6 +18,8 @@ class MultiViewAtlas:
         transition_rule: Union[str, List[str], pd.DataFrame] = None,
         subset_obsm: bool = False,
         rename_obsm: bool = True,
+        keep_vars: bool = False,
+        keep_layers: bool = False,
     ):
         """Initialize a MultiViewAltas object, encoding assignment to atlas views and hierarchy between views
 
@@ -28,6 +30,7 @@ class MultiViewAtlas:
                 if AnnData, must contain the following fields:
                 - obsm["view_assign"]: binary DataFrame with assignment of each cells to views
                 - uns["view_hierarchy"]: dictionary of hierarchy between views
+                if MuData, must contain original AnnData in `mudata['full']` and one modality for each dataset view.
             transition_rule: str or list
                 which rule to use for transition between one view and another: either a slot in adata.obsm storing latent dimensions (i.e. transition by clustering)
                 or a column in adata.obs or list of columns (i.e. transition by metadata)
@@ -36,9 +39,10 @@ class MultiViewAtlas:
                 in every view (default: False, obsm slots are considered to be specific to the full view)
             rename_obsm: bool
                 (used only if data is an MuData object) whether to rename obsm slots to avoid name clashes
-
-            MuData: MuData object with original AnnData in `mudata['full']` and one modality for each dataset view.
-            View AnnDatas only store obs and obsm.
+            keep_vars: bool
+                (used only if data is an MuData object) whether to keep adata.var for each view (e.g. to store highly variable genes) (default: False)
+            keep_layers: bool
+                (used only if data is an MuData object) whether to keep adata.layers for each view (e.g. to store normalized data) (default: False)
 
         Details:
         --------
@@ -84,8 +88,11 @@ class MultiViewAtlas:
                 except KeyError:
                     raise ValueError("mdata must contain dictionary of view hierarchy in uns['view_hierarchy']")
 
+            mdata["full"].uns["view_hierarchy"] = mdata.uns["view_hierarchy"]
             if "full" not in mdata.uns["view_hierarchy"].keys():
                 mdata.uns["view_hierarchy"] = {"full": mdata.uns["view_hierarchy"]}
+            if "full" not in mdata["full"].uns["view_hierarchy"].keys():
+                mdata["full"].uns["view_hierarchy"] = {"full": mdata["full"].uns["view_hierarchy"]}
 
             if "view_assign" not in mdata.obsm:
                 try:
@@ -102,7 +109,14 @@ class MultiViewAtlas:
             # Remove var and X from views
             for k in mdata.mod.keys():
                 if k != "full":
-                    mdata.mod[k] = AnnData(obs=mdata[k].obs, obsm=mdata[k].obsm)
+                    init_params = {"obsm": mdata[k].obsm, "obs": mdata[k].obs}
+                    if keep_layers is True:
+                        init_params["layers"] = mdata[k].layers
+                    if keep_vars is True:
+                        init_params["var"] = mdata[k].var
+                        init_params["varm"] = mdata[k].varm
+                        init_params["varp"] = mdata[k].varp
+                    mdata.mod[k] = AnnData(**init_params)
 
             # Rename obsm slots to be view specific
             if rename_obsm:
@@ -144,18 +158,28 @@ class MultiViewAtlas:
         if isinstance(index, str):
             try:
                 vdata_full = self.mdata["full"][self.mdata[index].obs_names]
-                vdata = AnnData(
+                init_params = {
                     # get attributes from the full view
-                    X=vdata_full.X,
-                    var=vdata_full.var,
-                    varm=vdata_full.varm,
-                    varp=vdata_full.varp,
+                    "X": vdata_full.X,
                     # get attributes from the view
-                    obs=self.mdata[index].obs,
-                    obsm=self.mdata[index].obsm,
-                    obsp=self.mdata[index].obsp,
-                    uns=self.mdata[index].uns,
-                )
+                    "obs": self.mdata[index].obs,
+                    "obsm": self.mdata[index].obsm,
+                    "obsp": self.mdata[index].obsp,
+                    "uns": self.mdata[index].uns,
+                }
+                if len(self.mdata[index].var) != 0:
+                    init_params["var"] = self.mdata[index].var
+                    init_params["varm"] = self.mdata[index].varm
+                    init_params["varp"] = self.mdata[index].varp
+                else:
+                    init_params["var"] = vdata_full.var
+                    init_params["varm"] = vdata_full.varm
+                    init_params["varp"] = vdata_full.varp
+                if len(self.mdata[index].layers) != 0:
+                    init_params["layers"] = self.mdata[index].layers
+                else:
+                    init_params["layers"] = vdata_full.layers
+                vdata = AnnData(**init_params)
                 return vdata
             except KeyError:
                 raise KeyError(f"View {index} not found")
