@@ -117,6 +117,8 @@ class MultiViewAtlas:
                         init_params["varm"] = mdata[k].varm
                         init_params["varp"] = mdata[k].varp
                     mdata.mod[k] = AnnData(**init_params)
+                else:
+                    mdata.mod[k] = AnnData(mdata[k])
 
             # Rename obsm slots to be view specific
             if rename_obsm:

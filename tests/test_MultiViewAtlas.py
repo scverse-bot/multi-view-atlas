@@ -74,6 +74,31 @@ def test_missing_view():
         MultiViewAtlas(adata)
 
 
+def test_rename_obsm():
+    adata = sample_dataset()
+    adata_dict = {}
+    adata_dict["full"] = adata.copy()
+    view_assign = adata.obsm["view_assign"].copy()
+    for v in view_assign:
+        adata_dict[v] = adata[view_assign[v] == 1].copy()
+    for v in adata_dict.keys():
+        sc.pp.normalize_total(adata_dict[v], target_sum=1e4)
+        sc.pp.log1p(adata_dict[v])
+        sc.pp.highly_variable_genes(adata_dict[v], n_top_genes=1000)
+        sc.pp.pca(adata_dict[v], n_comps=10)
+
+    mdata = mudata.MuData(adata_dict)
+    mvatlas = MultiViewAtlas(mdata, transition_rule="louvain", rename_obsm=True)
+    for v in mvatlas.views:
+        assert f"X_pca_{v}" not in adata_dict[v].obsm
+        assert f"X_pca_{v}" in mvatlas.mdata[v].obsm
+    mdata = mudata.MuData(adata_dict)
+    mvatlas = MultiViewAtlas(mdata, transition_rule="louvain", rename_obsm=False)
+    for v in mvatlas.views:
+        assert f"X_pca_{v}" not in adata_dict[v].obsm
+        assert f"X_pca_{v}" not in mvatlas.mdata[v].obsm
+
+
 def test_transition_rule():
     adata = sample_dataset()
     mva = MultiViewAtlas(adata)
