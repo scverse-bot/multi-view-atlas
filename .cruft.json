@@ -1,23 +1,23 @@
 {
-    "template": "https://github.com/scverse/cookiecutter-scverse",
-    "commit": "102e03cd6f425f42a39f6f90681b8b959d07f58a",
-    "checkout": null,
-    "context": {
-        "cookiecutter": {
-            "project_name": "multi-view-atlas",
-            "package_name": "multi_view_atlas",
-            "project_description": "Multi-view objects for annotation and mapping to single-cell atlases",
-            "author_full_name": "Emma Dann",
-            "author_email": "ed6@sanger.ac.uk",
-            "github_user": "emdann",
-            "project_repo": "https://github.com/emdann/multi-view-atlas",
-            "license": "BSD 3-Clause License",
-            "_copy_without_render": [
-                ".github/workflows/**.yaml",
-                "docs/_templates/autosummary/**.rst"
-            ],
-            "_template": "https://github.com/scverse/cookiecutter-scverse"
-        }
-    },
-    "directory": null
+  "template": "https://github.com/scverse/cookiecutter-scverse",
+  "commit": "c96cadaa981a71113cc97ada8e5085188ed22ed7",
+  "checkout": "v0.1.1",
+  "context": {
+    "cookiecutter": {
+      "project_name": "multi-view-atlas",
+      "package_name": "multi_view_atlas",
+      "project_description": "Multi-view objects for annotation and mapping to single-cell atlases",
+      "author_full_name": "Emma Dann",
+      "author_email": "ed6@sanger.ac.uk",
+      "github_user": "emdann",
+      "project_repo": "https://github.com/emdann/multi-view-atlas",
+      "license": "BSD 3-Clause License",
+      "_copy_without_render": [
+        ".github/workflows/**.yaml",
+        "docs/_templates/autosummary/**.rst"
+      ],
+      "_template": "https://github.com/scverse/cookiecutter-scverse"
+    }
+  },
+  "directory": null
 }
