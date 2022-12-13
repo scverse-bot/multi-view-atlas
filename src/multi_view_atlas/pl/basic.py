@@ -4,7 +4,6 @@ import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import scanpy as sc
-import seaborn as sns
 import seaborn.objects as so
 from mudata import MuData
 from pandas.api.types import is_categorical_dtype
@@ -183,10 +182,11 @@ def view_hierarchy(
         view_assign = view_assign.loc[sample_cells].copy()
 
     # Order cells by clustering
-    cell_order_hm = sns.clustermap(view_assign[all_views], col_cluster=False)
-    plt.close()
-    ixs_cells = cell_order_hm.dendrogram_row.reordered_ind
-    order_cells = view_assign.iloc[ixs_cells].index.tolist()
+    order_cells = view_assign.sort_values(all_views, ascending=True).index.tolist()
+    # cell_order_hm = sns.clustermap(view_assign[all_views], col_cluster=False)
+    # plt.close()
+    # ixs_cells = cell_order_hm.dendrogram_row.reordered_ind
+    # order_cells = view_assign.iloc[ixs_cells].index.tolist()
     pl_df["index"] = pl_df["index"].astype("category")
     pl_df["index"].cat.reorder_categories(order_cells, inplace=True)
     pl_df["cell_order"] = pl_df["index"].cat.codes
@@ -196,11 +196,15 @@ def view_hierarchy(
     pl_df_ncells = pl_df.groupby(["n_cells", "view_depth", "view"]).median().reset_index()
     pl_df_ncells["label"] = [f"{v['view']} ({v['n_cells']} cells)" for _, v in pl_df_ncells.iterrows()]
 
+    cells_offset = np.round(max(pl_df.cell_order) * 0.1)
     p = (
         so.Plot(pl_df, y="view_depth", x="cell_order", color="view", text="n_cells")
         .add(so.Dot(marker="s"))
         .scale(**kwargs)
-        .limit(y=(min(pl_df.view_depth) - text_offset, max(pl_df.view_depth) + (text_offset * 5)))
+        .limit(
+            y=(min(pl_df.view_depth) - text_offset, max(pl_df.view_depth) + (text_offset * 5)),
+            x=(min(pl_df.cell_order) - cells_offset, max(pl_df.cell_order) + (cells_offset)),
+        )
         .label(x="cells", y="View depth", color=None)
         .theme(
             {
