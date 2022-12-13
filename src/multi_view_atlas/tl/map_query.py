@@ -10,7 +10,7 @@ from pandas.api.types import is_numeric_dtype
 from sklearn.neighbors import KNeighborsClassifier
 
 from ..utils import check_transition_rule, get_views_from_structure
-from .MultiViewAtlas import MultiViewAtlas
+from .MultiViewAtlas import MultiViewAtlas, _harmonize_mdata_full
 
 warnings.simplefilter(action="ignore", category=FutureWarning)
 warnings.simplefilter(action="ignore", category=UserWarning)
@@ -64,8 +64,17 @@ def load_query(
                 """
             )
 
-    mvatlas_mapped = mvatlas.copy()
-    mvatlas_mapped.mdata.mod["full"] = vdata_full.copy()
+    mdata = mvatlas.mdata.copy()
+    mdata.mod["full"] = vdata_full.copy()
+    try:
+        mdata.update()
+    except KeyError:
+        mdata.update()
+    del mdata.obsm["view_assign"]
+    mvatlas_mapped = MultiViewAtlas(mdata, rename_obsm=False)
+    mvatlas_mapped.view_transition_rule = mvatlas.view_transition_rule.copy()
+
+    _harmonize_mdata_full(mvatlas_mapped)
     return mvatlas_mapped
 
 

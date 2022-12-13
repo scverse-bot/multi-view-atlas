@@ -94,17 +94,18 @@ class MultiViewAtlas:
             if "full" not in mdata["full"].uns["view_hierarchy"].keys():
                 mdata["full"].uns["view_hierarchy"] = {"full": mdata["full"].uns["view_hierarchy"]}
 
-            if "view_assign" not in mdata.obsm:
-                try:
-                    mdata.obsm["view_assign"] = mdata["full"].obsm["view_assign"]
-                except KeyError:
-                    view_assign = pd.DataFrame(index=mdata["full"].obs_names)
-                    for k, v in mdata.mod.items():
-                        view_assign[k] = view_assign.index.isin(v.obs_names)
-                    view_assign = view_assign.astype("int")
-                    mdata["full"].obsm["view_assign"] = view_assign
-                    _clean_view_assignment(mdata["full"])
-                    mdata.obsm["view_assign"] = view_assign
+            # Build view assignment
+            # if "view_assign" not in mdata.obsm:
+            #     try:
+            #         mdata.obsm["view_assign"] = mdata["full"].obsm["view_assign"]
+            #     except KeyError:
+            view_assign = pd.DataFrame(
+                np.vstack([mdata.obsm[v] for v in mdata.mod.keys()]).T.astype("int"),
+                index=mdata.obs_names,
+                columns=mdata.mod.keys(),
+            )
+            _clean_view_assignment(mdata["full"])
+            mdata.obsm["view_assign"] = view_assign
 
             # Remove var and X from views
             for k in mdata.mod.keys():
