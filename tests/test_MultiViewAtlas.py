@@ -111,6 +111,24 @@ def test_transition_rule():
     assert mva.view_transition_rule.loc["B cells", child_v] is not None, "Extra transition rule"
 
 
+def test_view_assign_building():
+    """Test that when initializing from MuData the view_assignment table is correct"""
+    adata = sample_dataset()
+    view_assign = adata.obsm["view_assign"].copy()
+    adata_dict = {}
+    del adata.obsm["view_assign"]
+    adata_dict["full"] = adata.copy()
+    for v in view_assign:
+        adata_dict[v] = adata[view_assign[v] == 1].copy()
+    for v in adata_dict.keys():
+        assert "view_assign" not in adata_dict[v].obsm
+    mdata = mudata.MuData(adata_dict)
+    mva = MultiViewAtlas(mdata, transition_rule="louvain", rename_obsm=True)
+    for v in mva.views:
+        cells = mva.mdata.obs_names[mva.mdata.obsm["view_assign"][v] == 1]
+        assert cells.isin(adata_dict[v].obs_names).all()
+
+
 def test_update_views():
     adata = sample_dataset()
     mva = MultiViewAtlas(adata)
@@ -179,3 +197,22 @@ def test_getter():
         mvatlas.mdata["full"].var_names[mvatlas.mdata["full"].var["highly_variable"]],
     )
     assert len(diff_hvgs) > 0
+
+
+def test_harmonize_mdata_full():
+    # Init from adata
+    adata = sample_dataset()
+    mva = MultiViewAtlas(adata, subset_obsm=False)
+    assert all(mva.mdata["full"].obsm["view_assign"] == mva.mdata.obsm["view_assign"])
+    assert mva.mdata["full"].uns["view_hierarchy"] == mva.view_hierarchy
+    # Init from MuData
+    adata = sample_dataset()
+    view_assign = adata.obsm["view_assign"].copy()
+    adata_dict = {}
+    adata_dict["full"] = adata.copy()
+    for v in view_assign:
+        adata_dict[v] = adata[view_assign[v] == 1].copy()
+    mdata = mudata.MuData(adata_dict)
+    mva = MultiViewAtlas(mdata, transition_rule="louvain")
+    assert all(mva.mdata["full"].obsm["view_assign_full"] == mva.mdata.obsm["view_assign"])
+    assert mva.mdata["full"].uns["view_hierarchy"] == mva.view_hierarchy

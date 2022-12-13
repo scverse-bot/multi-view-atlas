@@ -74,7 +74,7 @@ class MultiViewAtlas:
             _clean_view_assignment(adata)
 
             mdata = MuData(vdata_dict)
-            mdata.obs = mdata["full"].obs.copy()
+            # mdata.obs = mdata["full"].obs.copy()
 
             mdata.uns["view_hierarchy"] = adata.uns["view_hierarchy"]
             mdata.obsm["view_assign"] = adata.obsm["view_assign"]
@@ -155,6 +155,7 @@ class MultiViewAtlas:
         self.views = get_views_from_structure(self.mdata.uns["view_hierarchy"])
         self.view_hierarchy = self.mdata.uns["view_hierarchy"]
         self.view_transition_rule = view_transition_rule
+        _harmonize_mdata_full(self)
 
     def __getitem__(self, index) -> Union["MuData", AnnData]:
         if isinstance(index, str):
@@ -269,7 +270,7 @@ class MultiViewAtlas:
             self.mdata.mod[v] = AnnData(obs=vdata.obs, obsm=vdata.obsm, obsp=vdata.obsp)
 
         # Update transition_rule
-        check_transition_rule(self.mdata, transition_rule)
+        check_transition_rule(self.mdata[parent_view], transition_rule)
         self.view_transition_rule[[parent_view] + child_views] = np.nan
         view_transition_rule = pd.DataFrame(np.nan, index=child_views, columns=[parent_view] + child_views)
         self.view_transition_rule = pd.concat([self.view_transition_rule, view_transition_rule], axis=0)
@@ -339,3 +340,29 @@ def _dict_set_nested(d, keys, value):
                 node = node[key]
             else:
                 node = node[key]
+
+
+def _harmonize_mdata_full(mva: MultiViewAtlas):
+    """Harmonize info in mdata common slots and mdata['full']"""
+    # Harmonize view assignment table
+    try:
+        view_assign_key_full = [x for x in mva.mdata["full"].obsm_keys() if "view_assign" in x][0]
+    except IndexError:
+        raise AssertionError("mva.mdata['full'] does not contain a view assignment table")
+
+    full_view_assign = mva.mdata["full"].obsm[view_assign_key_full].copy()
+    missing_cols = np.setdiff1d(mva.mdata.obsm["view_assign"].columns, full_view_assign.columns)
+    if len(missing_cols) > 0:
+        for c in missing_cols:
+            mva.mdata["full"].obsm[view_assign_key_full].loc[:, c] = mva.mdata.obsm["view_assign"][c].copy()
+
+    # Reorder columns
+    mva.mdata["full"].obsm[view_assign_key_full] = mva.mdata["full"].obsm[view_assign_key_full][
+        mva.mdata.obsm["view_assign"].columns
+    ]
+
+    # Harmonize view_hierarchy
+    if mva.mdata.uns["view_hierarchy"] != mva.view_hierarchy:
+        mva.mdata.uns["view_hierarchy"] = mva.view_hierarchy.copy()
+    if mva.mdata.uns["view_hierarchy"] != mva.mdata["full"].uns["view_hierarchy"]:
+        mva.mdata["full"].uns["view_hierarchy"] = mva.mdata.uns["view_hierarchy"].copy()
