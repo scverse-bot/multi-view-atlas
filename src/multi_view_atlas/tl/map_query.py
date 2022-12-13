@@ -144,8 +144,6 @@ def split_query(
             logging.info(f"No query cells in {current_view}")
             v_assign = mvatlas_mapped.mdata.obsm["view_assign"][[next_view]]
             vdata_dict[next_view] = mvatlas_mapped.mdata[next_view].copy()
-        print(new_view_assign.index.is_unique)
-        print(v_assign.index.is_unique)
         new_view_assign = pd.concat([new_view_assign, v_assign], 1)
 
     new_view_assign = new_view_assign.fillna(0)
