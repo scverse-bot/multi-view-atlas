@@ -124,7 +124,12 @@ def multiview_embedding(
 
 
 def view_hierarchy(
-    mvatlas: MultiViewAtlas, subset_obs: Union[List, None] = None, text_offset: float = 0.1, save: str = None, **kwargs
+    mvatlas: MultiViewAtlas,
+    subset_obs: Union[List, None] = None,
+    subsample_fraction: float = 0.1,
+    text_offset: float = 0.1,
+    save: str = None,
+    **kwargs,
 ):
     r"""Visualize view hierarchy and number of cells in each view
 
@@ -134,6 +139,8 @@ def view_hierarchy(
             MultiViewAtlas object
         subset_obs:
             list of obs_names to show in plot
+        subsample_fraction:
+            fraction of cells to subsample in plot (for scalability, default=0.1)
         text_offset:
             offset for text labels on y axis (default: 0.1)
         save:
@@ -156,25 +163,35 @@ def view_hierarchy(
     else:
         view_assign = mvatlas.mdata.obsm["view_assign"].loc[subset_obs].copy()
 
-    # Order cells by clustering
-    cell_order_hm = sns.clustermap(view_assign[all_views], col_cluster=False)
-    plt.close()
-    ixs_cells = cell_order_hm.dendrogram_row.reordered_ind
-    order_cells = view_assign.iloc[ixs_cells].index.tolist()
-
     # Pivot assignment to long format for plotting
     pl_df = view_assign.reset_index().melt(id_vars="index", var_name="view", value_name="value")
-    pl_df["index"] = pl_df["index"].astype("category")
-    pl_df["index"].cat.reorder_categories(order_cells, inplace=True)
-    pl_df["cell_order"] = pl_df["index"].cat.codes
     pl_df = pl_df[pl_df["value"] == 1]  # Keep only cells assigned to view
 
     # Add view depth info
     view_depth_dict = dict(zip(all_views, view_depths))
     pl_df["view_depth"] = [-view_depth_dict[x] for x in pl_df.view]
 
-    # Make df for number of cells per view (for annotation)
+    # Save number of cells per view
     n_cells_views = pl_df.groupby("view").size().to_dict()
+
+    # Subsample cells for scalability
+    if subsample_fraction < 1:
+        sample_cells = np.random.choice(
+            view_assign.index, size=int(np.round(subsample_fraction * view_assign.shape[0])), replace=False
+        )
+        pl_df = pl_df[pl_df["index"].isin(sample_cells)].copy()
+        view_assign = view_assign.loc[sample_cells].copy()
+
+    # Order cells by clustering
+    cell_order_hm = sns.clustermap(view_assign[all_views], col_cluster=False)
+    plt.close()
+    ixs_cells = cell_order_hm.dendrogram_row.reordered_ind
+    order_cells = view_assign.iloc[ixs_cells].index.tolist()
+    pl_df["index"] = pl_df["index"].astype("category")
+    pl_df["index"].cat.reorder_categories(order_cells, inplace=True)
+    pl_df["cell_order"] = pl_df["index"].cat.codes
+
+    # Make df for number of cells per view (for annotation)
     pl_df["n_cells"] = [n_cells_views[x] for x in pl_df.view]
     pl_df_ncells = pl_df.groupby(["n_cells", "view_depth", "view"]).median().reset_index()
     pl_df_ncells["label"] = [f"{v['view']} ({v['n_cells']} cells)" for _, v in pl_df_ncells.iterrows()]
