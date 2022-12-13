@@ -1,8 +1,11 @@
-from typing import Union
+from typing import List, Union
 
+import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import scanpy as sc
+import seaborn as sns
+import seaborn.objects as so
 from mudata import MuData
 from pandas.api.types import is_categorical_dtype
 from scanpy.plotting._tools.scatterplots import _get_palette
@@ -118,3 +121,98 @@ def multiview_embedding(
 
     plt.tight_layout(pad=3.0)
     plt.show()
+
+
+def view_hierarchy(
+    mvatlas: MultiViewAtlas, subset_obs: Union[List, None] = None, text_offset: float = 0.1, save: str = None, **kwargs
+):
+    r"""Visualize view hierarchy and number of cells in each view
+
+    Params:
+    --------
+        mvatlas:
+            MultiViewAtlas object
+        subset_obs:
+            list of obs_names to show in plot
+        text_offset:
+            offset for text labels on y axis (default: 0.1)
+        save:
+            path to save figure (default: None)
+        \**kwargs:
+            additional arguments to pass to `so.Plot.scale` (to customize appearance and palettes)
+
+    """
+    # Check input
+    if not isinstance(mvatlas, MultiViewAtlas):
+        raise ValueError("Input should be a MultiViewAtlas object")
+
+    # Get view info
+    all_views = ["full"] + mvatlas.get_view_pairs()["child_view"].tolist()
+    view_depths = [0] + [d + 1 for d in mvatlas.get_view_pairs()["depth"]]
+
+    # Get view assignment
+    if subset_obs is None:
+        view_assign = mvatlas.mdata.obsm["view_assign"].copy()
+    else:
+        view_assign = mvatlas.mdata.obsm["view_assign"].loc[subset_obs].copy()
+
+    # Order cells by clustering
+    cell_order_hm = sns.clustermap(view_assign[all_views], col_cluster=False)
+    plt.close()
+    ixs_cells = cell_order_hm.dendrogram_row.reordered_ind
+    order_cells = view_assign.iloc[ixs_cells].index.tolist()
+
+    # Pivot assignment to long format for plotting
+    pl_df = view_assign.reset_index().melt(id_vars="index", var_name="view", value_name="value")
+    pl_df["index"] = pl_df["index"].astype("category")
+    pl_df["index"].cat.reorder_categories(order_cells, inplace=True)
+    pl_df["cell_order"] = pl_df["index"].cat.codes
+    pl_df = pl_df[pl_df["value"] == 1]  # Keep only cells assigned to view
+
+    # Add view depth info
+    view_depth_dict = dict(zip(all_views, view_depths))
+    pl_df["view_depth"] = [-view_depth_dict[x] for x in pl_df.view]
+
+    # Make df for number of cells per view (for annotation)
+    n_cells_views = pl_df.groupby("view").size().to_dict()
+    pl_df["n_cells"] = [n_cells_views[x] for x in pl_df.view]
+    pl_df_ncells = pl_df.groupby(["n_cells", "view_depth", "view"]).median().reset_index()
+    pl_df_ncells["label"] = [f"{v['view']} ({v['n_cells']} cells)" for _, v in pl_df_ncells.iterrows()]
+
+    p = (
+        so.Plot(pl_df, y="view_depth", x="cell_order", color="view", text="n_cells")
+        .add(so.Dot(marker="s"))
+        .scale(**kwargs)
+        .limit(y=(min(pl_df.view_depth) - text_offset, max(pl_df.view_depth) + (text_offset * 5)))
+        .label(x="cells", y="View depth", color=None)
+        .theme(
+            {
+                "axes.facecolor": "w",
+                "axes.edgecolor": "C0",
+                "xtick.bottom": False,
+                "xtick.labelbottom": False,
+                "ytick.left": False,
+                "ytick.labelleft": False,
+                "axes.labelsize": 16,
+            }
+        )
+    )
+
+    f = matplotlib.figure.Figure(figsize=(10, 4))
+    res = p.on(f).plot()
+    ax = f.axes[0]
+    for _, v in pl_df_ncells.iterrows():
+        ax.text(
+            x=v["cell_order"],
+            y=v["view_depth"] + text_offset,
+            s=v["label"],
+            size=16,
+            verticalalignment="bottom",
+            horizontalalignment="center",
+        )
+    f.legends = []
+    if save is not None:
+        print(f"Saving figure to {sc.settings.figdir / save}")
+        res.save(sc.settings.figdir / save)
+
+    return res

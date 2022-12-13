@@ -2,9 +2,15 @@ import mudata
 import pytest
 import scanpy as sc
 
-from multi_view_atlas.pl import multiview_embedding
+from multi_view_atlas.pl import multiview_embedding, view_hierarchy
 from multi_view_atlas.tl import MultiViewAtlas
 from multi_view_atlas.utils import sample_dataset
+
+
+@pytest.fixture(scope="session")
+def fig_dir(tmp_path_factory):
+    save_dir = tmp_path_factory.mktemp("models")
+    return save_dir
 
 
 def test_multiview_embedding_basis():
@@ -35,3 +41,12 @@ def test_multiview_embedding_basis():
         raise AssertionError("multiview_embedding throws an exception")
     with pytest.raises(KeyError):
         multiview_embedding(mvatlas, view="NKT cells", basis_from_full=False, basis="X_pca")
+
+
+def test_view_hierarchy_saving(fig_dir):
+    sc.settings.figdir = fig_dir
+    adata = sample_dataset()
+    # split in query and atlas
+    mvatlas = MultiViewAtlas(adata, transition_rule="louvain")
+    view_hierarchy(mvatlas, save="view_hierarchy.png")
+    assert (fig_dir / "view_hierarchy.png").exists()

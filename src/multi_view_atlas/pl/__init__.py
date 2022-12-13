@@ -1,1 +1,1 @@
-from .basic import multiview_embedding
+from .basic import multiview_embedding, view_hierarchy
