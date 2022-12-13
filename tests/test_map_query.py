@@ -7,7 +7,7 @@ from multi_view_atlas.utils import sample_dataset
 
 
 def test_mapping_output():
-    """Test that consecutive mapping is the same as mapping in one step"""
+    """Test correct output of mapping"""
     adata = sample_dataset()
     # split in query and atlas
     query_cells = np.random.choice(adata.obs_names, size=int(np.round(adata.n_obs * 0.1)), replace=False)

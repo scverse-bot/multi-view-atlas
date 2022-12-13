@@ -74,7 +74,7 @@ class MultiViewAtlas:
             _clean_view_assignment(adata)
 
             mdata = MuData(vdata_dict)
-            mdata.obs = mdata["full"].obs.copy()
+            # mdata.obs = mdata["full"].obs.copy()
 
             mdata.uns["view_hierarchy"] = adata.uns["view_hierarchy"]
             mdata.obsm["view_assign"] = adata.obsm["view_assign"]
