@@ -362,6 +362,7 @@ def _harmonize_mdata_full(mva: MultiViewAtlas):
                 mva.mdata["full"].obsm[view_assign_key_full].loc[:, c] = mva.mdata.obsm["view_assign"][c].copy()
     else:
         mva.mdata["full"].obsm["view_assign"] = mva.mdata.obsm["view_assign"].copy()
+        view_assign_key_full = "view_assign"
 
     # Reorder columns
     mva.mdata["full"].obsm[view_assign_key_full] = mva.mdata["full"].obsm[view_assign_key_full][
