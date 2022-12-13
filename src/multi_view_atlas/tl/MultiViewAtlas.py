@@ -269,7 +269,7 @@ class MultiViewAtlas:
             self.mdata.mod[v] = AnnData(obs=vdata.obs, obsm=vdata.obsm, obsp=vdata.obsp)
 
         # Update transition_rule
-        check_transition_rule(self.mdata, transition_rule)
+        check_transition_rule(self.mdata[parent_view], transition_rule)
         self.view_transition_rule[[parent_view] + child_views] = np.nan
         view_transition_rule = pd.DataFrame(np.nan, index=child_views, columns=[parent_view] + child_views)
         self.view_transition_rule = pd.concat([self.view_transition_rule, view_transition_rule], axis=0)

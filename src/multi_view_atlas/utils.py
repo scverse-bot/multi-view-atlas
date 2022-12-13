@@ -3,6 +3,7 @@ from typing import Dict, List, Union
 import numpy as np
 import pandas as pd
 import scanpy as sc
+from anndata import AnnData
 
 
 def get_views_from_structure(view_hierarchy: Dict):
@@ -60,7 +61,7 @@ def sample_dataset():
     return adata
 
 
-def check_transition_rule(adata, transition_rule):
+def check_transition_rule(adata: AnnData, transition_rule: str):
     """Check that transition rule is of acceptable type"""
     if isinstance(transition_rule, str):
         if transition_rule in adata.obsm.keys():
