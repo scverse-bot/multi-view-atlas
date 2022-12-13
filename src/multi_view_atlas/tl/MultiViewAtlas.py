@@ -94,17 +94,19 @@ class MultiViewAtlas:
             if "full" not in mdata["full"].uns["view_hierarchy"].keys():
                 mdata["full"].uns["view_hierarchy"] = {"full": mdata["full"].uns["view_hierarchy"]}
 
-            if "view_assign" not in mdata.obsm:
-                try:
-                    mdata.obsm["view_assign"] = mdata["full"].obsm["view_assign"]
-                except KeyError:
-                    view_assign = pd.DataFrame(index=mdata["full"].obs_names)
-                    for k, v in mdata.mod.items():
-                        view_assign[k] = view_assign.index.isin(v.obs_names)
-                    view_assign = view_assign.astype("int")
-                    mdata["full"].obsm["view_assign"] = view_assign
-                    _clean_view_assignment(mdata["full"])
-                    mdata.obsm["view_assign"] = view_assign
+            # Build view assignment
+            # if "view_assign" not in mdata.obsm:
+            #     try:
+            #         mdata.obsm["view_assign"] = mdata["full"].obsm["view_assign"]
+            #     except KeyError:
+            view_assign = pd.DataFrame(
+                np.vstack([mdata.obsm[v] for v in mdata.mod.keys()]).T.astype("int"),
+                index=mdata.obs_names,
+                columns=mdata.mod.keys(),
+            )
+
+            mdata.obsm["view_assign"] = view_assign
+            _clean_view_assignment(mdata)
 
             # Remove var and X from views
             for k in mdata.mod.keys():
@@ -345,16 +347,22 @@ def _dict_set_nested(d, keys, value):
 def _harmonize_mdata_full(mva: MultiViewAtlas):
     """Harmonize info in mdata common slots and mdata['full']"""
     # Harmonize view assignment table
-    try:
-        view_assign_key_full = [x for x in mva.mdata["full"].obsm_keys() if "view_assign" in x][0]
-    except IndexError:
-        raise AssertionError("mva.mdata['full'] does not contain a view assignment table")
+    if "view_assign" in mva.mdata["full"].obsm.keys():
+        view_assign_key_full = "view_assign"
+    elif "view_assign_full" in mva.mdata["full"].obsm.keys():
+        view_assign_key_full = "view_assign_full"
+    else:
+        view_assign_key_full = None
 
-    full_view_assign = mva.mdata["full"].obsm[view_assign_key_full].copy()
-    missing_cols = np.setdiff1d(mva.mdata.obsm["view_assign"].columns, full_view_assign.columns)
-    if len(missing_cols) > 0:
-        for c in missing_cols:
-            mva.mdata["full"].obsm[view_assign_key_full].loc[:, c] = mva.mdata.obsm["view_assign"][c].copy()
+    if view_assign_key_full is not None:
+        full_view_assign = mva.mdata["full"].obsm[view_assign_key_full].copy()
+        missing_cols = np.setdiff1d(mva.mdata.obsm["view_assign"].columns, full_view_assign.columns)
+        if len(missing_cols) > 0:
+            for c in missing_cols:
+                mva.mdata["full"].obsm[view_assign_key_full].loc[:, c] = mva.mdata.obsm["view_assign"][c].copy()
+    else:
+        mva.mdata["full"].obsm["view_assign"] = mva.mdata.obsm["view_assign"].copy()
+        view_assign_key_full = "view_assign"
 
     # Reorder columns
     mva.mdata["full"].obsm[view_assign_key_full] = mva.mdata["full"].obsm[view_assign_key_full][

@@ -10,7 +10,7 @@ from pandas.api.types import is_numeric_dtype
 from sklearn.neighbors import KNeighborsClassifier
 
 from ..utils import check_transition_rule, get_views_from_structure
-from .MultiViewAtlas import MultiViewAtlas
+from .MultiViewAtlas import MultiViewAtlas, _harmonize_mdata_full
 
 warnings.simplefilter(action="ignore", category=FutureWarning)
 warnings.simplefilter(action="ignore", category=UserWarning)
@@ -64,8 +64,17 @@ def load_query(
                 """
             )
 
-    mvatlas_mapped = mvatlas.copy()
-    mvatlas_mapped.mdata.mod["full"] = vdata_full.copy()
+    mdata = mvatlas.mdata.copy()
+    mdata.mod["full"] = vdata_full.copy()
+    try:
+        mdata.update()
+    except KeyError:
+        mdata.update()
+    del mdata.obsm["view_assign"]
+    mvatlas_mapped = MultiViewAtlas(mdata, rename_obsm=False)
+    mvatlas_mapped.view_transition_rule = mvatlas.view_transition_rule.copy()
+
+    _harmonize_mdata_full(mvatlas_mapped)
     return mvatlas_mapped
 
 
@@ -102,17 +111,25 @@ def split_query(
         depth = row["depth"]
         current_view = row["parent_view"]
         next_view = row["child_view"]
-        if "dataset_group" in vdata_dict[current_view].obs:
+        try:
+            n_query_current = sum(vdata_dict[current_view].obs["dataset_group"] == "query")
+        except KeyError:
+            n_query_current = 0
+        try:
+            n_query_next = sum(mvatlas_mapped.mdata[next_view].obs["dataset_group"] == "query")
+        except KeyError:
+            n_query_next = 0
+        # if "dataset_group" in vdata_dict[current_view].obs:
+        if n_query_current > 0:
             adata_query = vdata_dict[current_view][vdata_dict[current_view].obs["dataset_group"] == "query"].copy()
             logging.info(f"Assigning to {next_view} from {current_view} with rule {row['transition_rule']}")
             # print(adata_query)
             # print(vdata_dict[current_view])
             # print(mvatlas_mapped.mdata[current_view])
-            if "dataset_group" in mvatlas_mapped.mdata[next_view].obs:
-                if sum(mvatlas_mapped.mdata[next_view].obs["dataset_group"] == "query") > 0:
-                    logging.info(f"Query cells already in {next_view}")
-                    v_assign = mvatlas_mapped.mdata.obsm["view_assign"][[next_view]]
-                    vdata_dict[next_view] = mvatlas_mapped.mdata[next_view].copy()
+            if n_query_next > 0:
+                logging.info(f"Query cells already in {next_view}")
+                v_assign = mvatlas_mapped.mdata.obsm["view_assign"][[next_view]]
+                vdata_dict[next_view] = mvatlas_mapped.mdata[next_view].copy()
             else:
                 adata_query_concat = AnnData(obs=adata_query.obs, obsm=adata_query.obsm, obsp=adata_query.obsp)
                 if depth > 0:
@@ -205,7 +222,9 @@ def map_next_view(
         # next_view_adata = next_view_adata[next_view_adata.obs[batch_key] == batch_categories[0]].copy()
         # assert "dataset_group" not in next_view_adata.obs.columns
     else:
-        v_assign = mvatlas.mdata.obsm["view_assign"][[next_view]]
+        v_assign = mvatlas.mdata.obsm["view_assign"].loc[mvatlas.mdata["full"].obs[batch_key] == batch_categories[0]][
+            [next_view]
+        ]
     transition_rule = mvatlas.view_transition_rule[current_view][next_view]
     if transition_rule is not None:
         try:
