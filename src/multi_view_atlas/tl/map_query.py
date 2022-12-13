@@ -144,6 +144,8 @@ def split_query(
             logging.info(f"No query cells in {current_view}")
             v_assign = mvatlas_mapped.mdata.obsm["view_assign"][[next_view]]
             vdata_dict[next_view] = mvatlas_mapped.mdata[next_view].copy()
+        print(new_view_assign.index.is_unique)
+        print(v_assign.index.is_unique)
         new_view_assign = pd.concat([new_view_assign, v_assign], 1)
 
     new_view_assign = new_view_assign.fillna(0)
@@ -222,7 +224,9 @@ def map_next_view(
         # next_view_adata = next_view_adata[next_view_adata.obs[batch_key] == batch_categories[0]].copy()
         # assert "dataset_group" not in next_view_adata.obs.columns
     else:
-        v_assign = mvatlas.mdata.obsm["view_assign"][[next_view]]
+        v_assign = mvatlas.mdata.obsm["view_assign"].loc[mvatlas.mdata["full"].obs[batch_key] == batch_categories[0]][
+            [next_view]
+        ]
     transition_rule = mvatlas.view_transition_rule[current_view][next_view]
     if transition_rule is not None:
         try:
