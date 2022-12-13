@@ -104,8 +104,9 @@ class MultiViewAtlas:
                 index=mdata.obs_names,
                 columns=mdata.mod.keys(),
             )
-            _clean_view_assignment(mdata["full"])
+
             mdata.obsm["view_assign"] = view_assign
+            _clean_view_assignment(mdata)
 
             # Remove var and X from views
             for k in mdata.mod.keys():
