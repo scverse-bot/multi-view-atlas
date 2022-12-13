@@ -179,3 +179,22 @@ def test_getter():
         mvatlas.mdata["full"].var_names[mvatlas.mdata["full"].var["highly_variable"]],
     )
     assert len(diff_hvgs) > 0
+
+
+def test_harmonize_mdata_full():
+    # Init from adata
+    adata = sample_dataset()
+    mva = MultiViewAtlas(adata, subset_obsm=False)
+    assert all(mva.mdata["full"].obsm["view_assign"] == mva.mdata.obsm["view_assign"])
+    assert mva.mdata["full"].uns["view_hierarchy"] == mva.view_hierarchy
+    # Init from MuData
+    adata = sample_dataset()
+    view_assign = adata.obsm["view_assign"].copy()
+    adata_dict = {}
+    adata_dict["full"] = adata.copy()
+    for v in view_assign:
+        adata_dict[v] = adata[view_assign[v] == 1].copy()
+    mdata = mudata.MuData(adata_dict)
+    mva = MultiViewAtlas(mdata, transition_rule="louvain")
+    assert all(mva.mdata["full"].obsm["view_assign_full"] == mva.mdata.obsm["view_assign"])
+    assert mva.mdata["full"].uns["view_hierarchy"] == mva.view_hierarchy
