@@ -40,6 +40,30 @@ def test_missing_rules_from_full():
         mva_mapped = split_query(mva_mapped)
 
 
+@pytest.mark.skip(reason="This is still highly broken")
+def test_missing_levels_in_transition_rule():
+    """Test that query mapping handles gracefully missing levels in transition rule column by mapping just to full"""
+    adata = sample_dataset()
+    # split in query and atlas
+    query_cells = np.random.choice(adata.obs_names, size=int(np.round(adata.n_obs * 0.1)), replace=False)
+    adata_query = adata[query_cells].copy()
+    adata = adata[~adata.obs_names.isin(query_cells)].copy()
+    mva = MultiViewAtlas(adata, transition_rule="louvain")
+
+    # Change labels in query
+    adata_query.obs["louvain"] = adata_query.obs["louvain"].astype(str)
+    adata_query.obs.loc[adata_query.obs["louvain"] == "CD4 T cells", "louvain"] = "CD4 T"
+
+    mva_mapped = load_query(mva, adata_query)
+    mva_mapped = split_query(mva_mapped)
+
+    cells_oi = adata_query.obs_names[adata_query.obs["louvain"] == "CD4 T"]
+
+    assert all(cells_oi.isin(mva_mapped.mdata["full"].obs_names))
+    assert all(~cells_oi.isin(mva_mapped.mdata["T cells"].obs_names))
+    assert all(~cells_oi.isin(mva_mapped.mdata["NKT cells"].obs_names))
+
+
 # def test_consecutive_mapping():
 #     """Test that consecutive mapping is the same as mapping in one step"""
 #     adata = sample_dataset()
