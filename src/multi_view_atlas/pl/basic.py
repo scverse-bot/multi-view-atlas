@@ -211,9 +211,11 @@ def view_hierarchy(
         view_assign = view_assign.loc[sample_cells].copy()
 
     # Order cells by clustering
-    # order_cells = view_assign.sort_values(all_views, ascending=False).index.tolist()
-    Z = linkage(pdist(view_assign, metric="euclidean"), method="ward")
-    order_cells = view_assign.index[dendrogram(Z, no_plot=True)["leaves"]]
+    try:
+        Z = linkage(pdist(view_assign, metric="euclidean"), method="ward")
+        order_cells = view_assign.index[dendrogram(Z, no_plot=True)["leaves"]]
+    except RecursionError:  # this is a shitty patch
+        order_cells = view_assign.sort_values(all_views, ascending=False).index.tolist()
     pl_df["index"] = pl_df["index"].astype("category")
     pl_df["index"].cat.reorder_categories(order_cells, inplace=True)
     pl_df["cell_order"] = pl_df["index"].cat.codes
@@ -234,7 +236,12 @@ def view_hierarchy(
     # Make df for number of cells per view (for annotation)
     pl_df["n_cells"] = [n_cells_views[x] for x in pl_df.view]
     pl_df_ncells = pl_df.groupby(["n_cells", "view_depth", "view"]).median().reset_index()
-    pl_df_ncells["label"] = [f"{v['view']} ({v['n_cells']} cells)" for _, v in pl_df_ncells.iterrows()]
+    pl_df_ncells["label"] = [
+        f"{v['view']} ({v['n_cells']} cells)"
+        if v["n_cells"] / n_cells_views["full"] > 0.2
+        else f"{v['view']}\n({v['n_cells']} cells)"
+        for _, v in pl_df_ncells.iterrows()
+    ]
 
     # Plot
     cells_offset = np.round(max(pl_df.cell_order) * 0.1)
