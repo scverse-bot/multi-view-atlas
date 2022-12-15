@@ -8,6 +8,8 @@ import seaborn.objects as so
 from mudata import MuData
 from pandas.api.types import is_categorical_dtype
 from scanpy.plotting._tools.scatterplots import _get_palette
+from scipy.cluster.hierarchy import dendrogram, linkage
+from scipy.spatial.distance import pdist
 
 from multi_view_atlas.tl import MultiViewAtlas
 from multi_view_atlas.utils import get_parent_view
@@ -127,6 +129,8 @@ def view_hierarchy(
     subset_obs: Union[List, None] = None,
     subsample_fraction: float = 0.1,
     text_offset: float = 0.1,
+    figsize: List = (10, 4),
+    pl_fontsize: int = 12,
     save: str = None,
     **kwargs,
 ):
@@ -142,11 +146,36 @@ def view_hierarchy(
             fraction of cells to subsample in plot (for scalability, default=0.1)
         text_offset:
             offset for text labels on y axis (default: 0.1)
+        figsize:
+            figure size (default: (10, 4))
+        pl_fontsize:
+            fontsize for labels and axis labels (default: 12)
         save:
             path to save figure (default: None)
         \**kwargs:
             additional arguments to pass to `so.Plot.scale` (to customize appearance and palettes)
 
+    Examples
+    --------
+    Plot view hierarchy and number of cells in each view
+
+    >>> import multi_view_atlas as mva
+    >>> adata = mva.utils.sample_dataset()
+    >>> mvatlas = mva.MultiViewAtlas(adata)
+    >>> mva.pl.view_hierarchy(mvatlas)
+
+    Subset cells to plot
+
+    >>> cells_of_interest = adata.obs_names[adata.obs["louvain"] == "CD4 T cells"]
+    >>> mva.pl.view_hierarchy(mvatlas, fraction_subsample = 0.5, subset_obs=cells_of_interest)
+
+    To speed up plotting while maintaining proportions, show a fraction of cells
+
+    >>> mva.pl.view_hierarchy(mvatlas, fraction_subsample = 0.01)
+
+    Change color palette
+
+    >>> mva.pl.view_hierarchy(mvatlas, color="Spectral")
     """
     # Check input
     if not isinstance(mvatlas, MultiViewAtlas):
@@ -182,30 +211,42 @@ def view_hierarchy(
         view_assign = view_assign.loc[sample_cells].copy()
 
     # Order cells by clustering
-    order_cells = view_assign.sort_values(all_views, ascending=True).index.tolist()
-    # cell_order_hm = sns.clustermap(view_assign[all_views], col_cluster=False)
-    # plt.close()
-    # ixs_cells = cell_order_hm.dendrogram_row.reordered_ind
-    # order_cells = view_assign.iloc[ixs_cells].index.tolist()
+    # order_cells = view_assign.sort_values(all_views, ascending=False).index.tolist()
+    Z = linkage(pdist(view_assign, metric="euclidean"), method="ward")
+    order_cells = view_assign.index[dendrogram(Z, no_plot=True)["leaves"]]
     pl_df["index"] = pl_df["index"].astype("category")
     pl_df["index"].cat.reorder_categories(order_cells, inplace=True)
     pl_df["cell_order"] = pl_df["index"].cat.codes
+
+    # Check for overlapping cells in the same depth
+    for d in pl_df["view_depth"].unique():
+        shared_cells = pl_df[pl_df["view_depth"] == d].value_counts("index")
+        shared_cells = shared_cells.index[shared_cells > 1].tolist()
+        if len(shared_cells) > 0:
+            shared_views = pl_df.view[
+                (pl_df["index"].isin(shared_cells)) & (pl_df["view_depth"] == d)
+            ].unique()  # get views with shared cells
+            # change depth to intermediate
+            shared_depths = np.linspace(d + (0.4 / len(shared_views)), d - (0.4 / len(shared_views)), len(shared_views))
+            for i, sv in enumerate(shared_views):
+                pl_df.loc[pl_df.view == sv, "view_depth"] = shared_depths[i]
 
     # Make df for number of cells per view (for annotation)
     pl_df["n_cells"] = [n_cells_views[x] for x in pl_df.view]
     pl_df_ncells = pl_df.groupby(["n_cells", "view_depth", "view"]).median().reset_index()
     pl_df_ncells["label"] = [f"{v['view']} ({v['n_cells']} cells)" for _, v in pl_df_ncells.iterrows()]
 
+    # Plot
     cells_offset = np.round(max(pl_df.cell_order) * 0.1)
     p = (
         so.Plot(pl_df, y="view_depth", x="cell_order", color="view", text="n_cells")
-        .add(so.Dot(marker="s"))
+        .add(so.Dot(marker="|"))
         .scale(**kwargs)
         .limit(
             y=(min(pl_df.view_depth) - text_offset, max(pl_df.view_depth) + (text_offset * 5)),
             x=(min(pl_df.cell_order) - cells_offset, max(pl_df.cell_order) + (cells_offset)),
         )
-        .label(x="cells", y="View depth", color=None)
+        .label(x="Cells", y="View depth", color=None)
         .theme(
             {
                 "axes.facecolor": "w",
@@ -214,12 +255,12 @@ def view_hierarchy(
                 "xtick.labelbottom": False,
                 "ytick.left": False,
                 "ytick.labelleft": False,
-                "axes.labelsize": 16,
+                "axes.labelsize": pl_fontsize,
             }
         )
     )
 
-    f = matplotlib.figure.Figure(figsize=(10, 4))
+    f = matplotlib.figure.Figure(figsize=figsize)
     res = p.on(f).plot()
     ax = f.axes[0]
     for _, v in pl_df_ncells.iterrows():
@@ -227,11 +268,15 @@ def view_hierarchy(
             x=v["cell_order"],
             y=v["view_depth"] + text_offset,
             s=v["label"],
-            size=16,
+            size=pl_fontsize,
             verticalalignment="bottom",
             horizontalalignment="center",
         )
     f.legends = []
+    # remove frame from plot
+    for spine in ax.spines.values():
+        spine.set_visible(False)
+
     if save is not None:
         print(f"Saving figure to {sc.settings.figdir / save}")
         res.save(sc.settings.figdir / save)
