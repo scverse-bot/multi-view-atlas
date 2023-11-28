@@ -3,7 +3,7 @@
 [![Tests][badge-tests]][link-tests]
 [![Documentation][badge-docs]][link-docs]
 
-[badge-tests]: https://img.shields.io/github/workflow/status/emdann/multi-view-atlas/Test/main
+[badge-tests]: https://img.shields.io/github/actions/workflow/status/emdann/multi-view-atlas/test.yaml?branch=main
 [link-tests]: https://github.com/emdann/multi-view-atlas/actions/workflows/test.yml
 [badge-docs]: https://img.shields.io/readthedocs/multi-view-atlas
 
