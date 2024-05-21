@@ -8,7 +8,7 @@
 
 api.md
 changelog.md
-developer_docs.md
+contributing.md
 references.md
 
 notebooks/example
