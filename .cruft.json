@@ -1,23 +1,43 @@
 {
-    "template": "https://github.com/scverse/cookiecutter-scverse",
-    "commit": "102e03cd6f425f42a39f6f90681b8b959d07f58a",
-    "checkout": null,
-    "context": {
-        "cookiecutter": {
-            "project_name": "multi-view-atlas",
-            "package_name": "multi_view_atlas",
-            "project_description": "Multi-view objects for annotation and mapping to single-cell atlases",
-            "author_full_name": "Emma Dann",
-            "author_email": "ed6@sanger.ac.uk",
-            "github_user": "emdann",
-            "project_repo": "https://github.com/emdann/multi-view-atlas",
-            "license": "BSD 3-Clause License",
-            "_copy_without_render": [
-                ".github/workflows/**.yaml",
-                "docs/_templates/autosummary/**.rst"
-            ],
-            "_template": "https://github.com/scverse/cookiecutter-scverse"
-        }
-    },
-    "directory": null
+  "template": "https://github.com/scverse/cookiecutter-scverse",
+  "commit": "94ef9fb6f9ad8cfe65a3d9575679c03c80c49cd1",
+  "checkout": "v0.5.0",
+  "context": {
+    "cookiecutter": {
+      "project_name": "multi-view-atlas",
+      "package_name": "multi_view_atlas",
+      "project_description": "Multi-view objects for annotation and mapping to single-cell atlases",
+      "author_full_name": "Emma Dann",
+      "author_email": "ed6@sanger.ac.uk",
+      "github_user": "emdann",
+      "github_repo": "multi-view-atlas",
+      "license": "BSD 3-Clause License",
+      "ide_integration": true,
+      "_copy_without_render": [
+        ".github/workflows/build.yaml",
+        ".github/workflows/test.yaml",
+        "docs/_templates/autosummary/**.rst"
+      ],
+      "_exclude_on_template_update": [
+        "CHANGELOG.md",
+        "LICENSE",
+        "README.md",
+        "docs/api.md",
+        "docs/index.md",
+        "docs/notebooks/example.ipynb",
+        "docs/references.bib",
+        "docs/references.md",
+        "src/**",
+        "tests/**"
+      ],
+      "_render_devdocs": false,
+      "_jinja2_env_vars": {
+        "lstrip_blocks": true,
+        "trim_blocks": true
+      },
+      "_template": "https://github.com/scverse/cookiecutter-scverse",
+      "_commit": "94ef9fb6f9ad8cfe65a3d9575679c03c80c49cd1"
+    }
+  },
+  "directory": null
 }
